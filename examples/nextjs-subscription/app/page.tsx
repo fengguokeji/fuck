@@ -80,147 +80,158 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex flex-col gap-12">
-      <section className="grid gap-6 md:grid-cols-3">
+    <div className="plan-section">
+      <div className="plan-grid">
         {plans.map((tier) => {
           const isActive = tier.id === selectedPlan;
           return (
             <button
               key={tier.id}
               onClick={() => setSelectedPlan(tier.id)}
-              className={`flex flex-col gap-3 rounded-xl border p-6 text-left transition focus:outline-none focus:ring ${
-                isActive ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-400' : 'border-slate-800 hover:border-blue-400'
-              }`}
+              className="plan-button"
+              aria-pressed={isActive}
             >
-              <div className="flex items-baseline justify-between">
-                <span className="text-lg font-semibold">{tier.name}</span>
-                <span className="text-2xl font-bold text-blue-300">
-                  ¥{tier.price}
-                  <span className="text-xs font-medium text-slate-400">/月</span>
-                </span>
+              <div className={`plan-card${isActive ? ' plan-card--active' : ''}`}>
+                {tier.highlight && <span className="plan-badge">{tier.highlight}</span>}
+                <div className="plan-title">
+                  <span className="plan-name">{tier.name}</span>
+                  <span className="plan-price">
+                    ¥{tier.price}
+                    <span>/月</span>
+                  </span>
+                </div>
+                <p className="plan-description">{tier.description}</p>
+                <ul className="plan-feature-list">
+                  {tier.features.map((feature) => (
+                    <li key={feature} className="plan-feature">
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <p className="text-sm text-slate-300">{tier.description}</p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-400">
-                {tier.features.map((feature) => (
-                  <li key={feature}>{feature}</li>
-                ))}
-              </ul>
             </button>
           );
         })}
-      </section>
+      </div>
 
-      <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-8 shadow-xl">
-        <h2 className="text-xl font-semibold">立即订阅</h2>
-        <p className="mt-2 text-sm text-slate-400">
-          下单后将生成支付宝二维码，请使用支付宝扫码完成支付。
-        </p>
-        <div className="mt-6 flex flex-col gap-4 md:flex-row">
-          <label className="flex flex-1 flex-col gap-2 text-sm">
-            <span>联系邮箱</span>
+      <section className="section-card">
+        <div className="section-header">
+          <div className="section-header-text">
+            <h2>填写信息并下单</h2>
+            <p>
+              输入联系邮箱后即可创建支付宝预订单，系统会生成扫码支付二维码并在支付后自动更新订单状态。
+            </p>
+          </div>
+          <div className="section-summary">
+            <span>当前套餐</span>
+            <strong>
+              ¥{plan.price.toFixed(2)} {plan.currency}
+            </strong>
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="input-field">
+            <label htmlFor="checkout-email">联系邮箱</label>
             <input
-              className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-blue-400"
+              id="checkout-email"
+              className="input-control"
               placeholder="you@example.com"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
+              type="email"
             />
-          </label>
-          <button
-            onClick={submitOrder}
-            disabled={creating || !email}
-            className="mt-2 inline-flex items-center justify-center rounded-md bg-blue-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:bg-slate-700 md:mt-auto"
-          >
-            {creating ? '创建中…' : `购买 ${plan.name}`}
+          </div>
+          <button onClick={submitOrder} disabled={creating || !email} className="primary-button">
+            {creating ? '正在创建订单…' : `使用套餐 ${plan.name}`}
           </button>
         </div>
-        {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+
+        {error && <div className="alert-error">{error}</div>}
 
         {order && (
-          <div className="mt-8 grid gap-4 md:grid-cols-[280px,1fr] md:gap-10">
-            <div className="flex flex-col items-center gap-3 rounded-lg border border-slate-800 bg-slate-950 p-4">
-              <span className="text-xs uppercase tracking-widest text-slate-500">扫描支付</span>
-              <img src={order.qrCode} alt="Alipay QR" className="h-64 w-64 rounded-md bg-white p-2" />
-              <p className="text-xs text-slate-400">
+          <div className="payment-panel">
+            <div className="qr-box">
+              <span className="qr-label">扫码支付</span>
+              <img src={order.qrCode} alt="支付宝二维码" className="qr-image" />
+              <p className="qr-tip">
                 {order.gateway === 'mock'
-                  ? '当前处于模拟模式，二维码仅用于演示。订单会自动标记为已支付。'
-                  : '使用支付宝扫描二维码完成支付，支付成功后系统将自动为您开通权限。'}
+                  ? '当前处于模拟模式，二维码仅用于演示，订单会自动标记为已支付。'
+                  : '使用支付宝扫描二维码完成支付，支付成功后系统会立即同步订单状态。'}
               </p>
             </div>
-            <div className="flex flex-col gap-3 text-sm text-slate-300">
-              <div>
-                <span className="text-xs uppercase text-slate-500">订单编号</span>
-                <p className="font-mono text-base text-blue-200">{order.orderId}</p>
+            <div className="order-details">
+              <div className="detail-item">
+                <span className="detail-label">订单编号</span>
+                <span className="detail-value">{order.orderId}</span>
               </div>
-              <div>
-                <span className="text-xs uppercase text-slate-500">支付状态</span>
-                <p className="font-medium text-emerald-300">{order.status === 'paid' ? '已支付' : '待支付'}</p>
+              <div className="detail-item">
+                <span className="detail-label">支付状态</span>
+                <span className="detail-value" style={{ color: order.status === 'paid' ? '#4ade80' : '#facc15' }}>
+                  {order.status === 'paid' ? '已支付' : '待支付'}
+                </span>
               </div>
-              <div>
-                <span className="text-xs uppercase text-slate-500">使用教程</span>
-                <p>
-                  <a className="text-blue-300 underline" href={order.tutorialUrl} target="_blank" rel="noreferrer">
-                    点击查看开通指引
-                  </a>
-                </p>
+              <div className="detail-item">
+                <span className="detail-label">教学指引</span>
+                <a className="tutorial-link" href={order.tutorialUrl} target="_blank" rel="noreferrer">
+                  查看使用教程
+                </a>
               </div>
-              <div className="rounded-lg border border-slate-800 bg-slate-950 p-4 text-xs text-slate-400">
-                <p>
-                  支付完成后，可使用邮箱 {email || 'you@example.com'} 在下方查询历史订单重新获取二维码与教程。
-                </p>
+              <div className="notice-box">
+                支付完成后，可在下方通过邮箱 {email || 'you@example.com'} 查询历史订单，重新获取二维码及使用教程。
               </div>
             </div>
           </div>
         )}
       </section>
 
-      <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-8 shadow-xl">
-        <h2 className="text-xl font-semibold">邮箱查询历史订单</h2>
-        <p className="mt-2 text-sm text-slate-400">
-          输入邮箱即可查看最近的订单详情，并重新获取二维码和使用教程。
-        </p>
-        <div className="mt-4 flex flex-col gap-3 md:flex-row">
-          <input
-            className="flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-blue-400"
-            placeholder="you@example.com"
-            value={historyEmail}
-            onChange={(event) => setHistoryEmail(event.target.value)}
-          />
-          <button
-            onClick={queryHistory}
-            disabled={historyLoading || !historyEmail}
-            className="inline-flex items-center justify-center rounded-md bg-slate-800 px-6 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-700"
-          >
+      <section className="section-card">
+        <div className="section-header">
+          <div className="section-header-text">
+            <h2>邮箱自助查询订单</h2>
+            <p>输入下单时使用的邮箱，可查看订单支付状态并再次获取二维码与教学链接。</p>
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="input-field">
+            <label htmlFor="history-email">查询邮箱</label>
+            <input
+              id="history-email"
+              className="input-control"
+              placeholder="you@example.com"
+              value={historyEmail}
+              onChange={(event) => setHistoryEmail(event.target.value)}
+              type="email"
+            />
+          </div>
+          <button onClick={queryHistory} disabled={historyLoading || !historyEmail} className="secondary-button">
             {historyLoading ? '查询中…' : '查询订单'}
           </button>
         </div>
 
         {history && (
-          <div className="mt-6 space-y-4">
-            {history.length === 0 && <p className="text-sm text-slate-400">暂无订单记录。</p>}
+          <div className="history-list">
+            {history.length === 0 && <p>暂无订单记录。</p>}
             {history.map((item) => (
-              <div key={item.id} className="rounded-lg border border-slate-800 bg-slate-950 p-4 text-sm">
-                <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+              <div key={item.id} className="history-item">
+                <div className="history-item-header">
                   <div>
-                    <p className="font-semibold text-blue-200">订单号：{item.id}</p>
-                    <p className="text-xs text-slate-400">状态：{item.status === 'paid' ? '已支付' : '待支付'}</p>
+                    <div className="history-title">订单号：{item.id}</div>
+                    <div className="history-meta">状态：{item.status === 'paid' ? '已支付' : '待支付'}</div>
                   </div>
                   {item.qrCode && (
-                    <a
-                      href={item.qrCode}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs font-medium text-blue-300 underline"
-                    >
+                    <a className="history-link" href={item.qrCode} target="_blank" rel="noreferrer">
                       重新获取二维码
                     </a>
                   )}
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                <div className="history-meta">
                   <span>套餐：{plans.find((p) => p.id === item.planId)?.name ?? item.planId}</span>
                   <span>
                     金额：¥{item.amount} {item.currency}
                   </span>
-                  <a className="text-blue-300 underline" href={item.tutorialUrl} target="_blank" rel="noreferrer">
+                  <a className="history-link" href={item.tutorialUrl} target="_blank" rel="noreferrer">
                     查看使用教程
                   </a>
                 </div>

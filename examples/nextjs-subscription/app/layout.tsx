@@ -2,31 +2,31 @@ import './globals.css';
 import type { ReactNode } from 'react';
 
 export const metadata = {
-  title: process.env.NEXT_PUBLIC_SITE_NAME ?? 'AI Copilot Store',
+  title: process.env.NEXT_PUBLIC_SITE_NAME ?? '智能助理订阅中心',
   description:
-    'Subscription checkout demo that creates Alipay QR code payments and supports email-based order lookup.',
+    '基于支付宝支付的订阅演示：创建二维码收款、异步回调更新状态，并支持邮箱检索历史订单。',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-slate-950 text-slate-100">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-6 py-16">
-          <header className="flex flex-col gap-2 text-center">
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              {process.env.NEXT_PUBLIC_SITE_NAME ?? 'AI Copilot Store'}
-            </h1>
-            <p className="text-sm text-slate-300">
-              Pay with Alipay, receive instant onboarding, and revisit orders using your email address.
+    <html lang="zh-CN">
+      <body className="app-body">
+        <div className="app-container">
+          <header className="hero-card">
+            <span className="hero-chip">极速部署 · 无需运维</span>
+            <h1 className="hero-title">解锁您的专属订阅服务</h1>
+            <p className="hero-subtitle">
+              通过支付宝扫码即可完成支付，支付成功后自动开通权限。支持邮箱自助查询历史订单与教学链接，适配
+              Vercel Serverless 环境。
             </p>
           </header>
-          <main className="flex-1">{children}</main>
-          <footer className="border-t border-slate-800 pt-8 text-center text-xs text-slate-500">
-            Built for the alipay-sdk repository demo. Need help? Contact{' '}
-            <a className="underline" href={`mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'support@example.com'}`}>
+          <main className="page-content">{children}</main>
+          <footer className="page-footer">
+            构建于 alipay-sdk 示例项目。如需支持，请联系{' '}
+            <a className="footer-link" href={`mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'support@example.com'}`}>
               {process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'support@example.com'}
             </a>
-            .
+            。
           </footer>
         </div>
       </body>
