@@ -1,0 +1,10 @@
+{
+  "root": true,
+  "extends": [
+    "next/core-web-vitals"
+  ],
+  "rules": {
+    "no-restricted-imports": "off",
+    "@next/next/no-img-element": "off"
+  }
+}
