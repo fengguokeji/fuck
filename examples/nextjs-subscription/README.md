@@ -1,61 +1,61 @@
-# Next.js + Alipay Subscription Demo
+# Next.js + 支付宝订阅示例
 
-This example shows how to build a subscription checkout experience with [Next.js](https://nextjs.org), Vercel Postgres, and the [`alipay-sdk`](https://www.npmjs.com/package/alipay-sdk) from this repository. It demonstrates how to issue Alipay pre-orders, render QR codes for payment, handle asynchronous payment notifications, and allow customers to retrieve their orders via email.
+本示例展示如何使用 [Next.js](https://nextjs.org)、Vercel Postgres 以及本仓库提供的 [`alipay-sdk`](https://www.npmjs.com/package/alipay-sdk) 搭建订阅购买体验。示例演示了如何创建支付宝预订单、生成扫码支付二维码、处理支付宝异步通知，以及让用户通过邮箱查询订单。
 
-## Features
+## 功能特性
 
-- Three subscription tiers with customizable pricing and benefits copy.
-- Creates Alipay pre-orders and renders QR codes for desktop or mobile scanning.
-- Implements an `/api/alipay/notify` webhook to update orders when Alipay confirms the payment.
-- Email-based order lookup lets customers retrieve QR codes and onboarding links.
-- Uses Vercel Postgres for persistence when credentials are available.
-- Falls back to an in-memory data store during local development when no database is configured.
-- Automatically switches to a mock Alipay gateway when cryptographic credentials are missing, simplifying local testing.
+- 提供三档订阅套餐，可自定义价格与权益文案。
+- 使用支付宝预创建接口生成二维码，支持桌面与移动扫码。
+- 实现 `/api/alipay/notify` 回调，收到支付宝确认后自动更新订单状态。
+- 支持通过邮箱查询历史订单，并重新获取二维码和使用引导链接。
+- 在配置可用凭据时使用 Vercel Postgres 持久化数据。
+- 本地开发未配置数据库时自动降级为内存存储，避免阻塞流程。
+- 未提供支付宝密钥时自动切换为模拟网关，方便本地调试。
 
-## Getting Started Locally
+## 本地开发指南
 
-1. Install dependencies inside the example directory:
+1. 在示例目录中安装依赖：
 
    ```bash
    pnpm install
-   # or npm install / yarn install
+   # 或使用 npm install / yarn install
    ```
 
-2. Copy `.env.example` to `.env.local` and provide the required variables. When the Alipay keys are omitted the app will run in mock mode.
+2. 将 `.env.example` 复制为 `.env.local` 并填写必要变量。若省略支付宝密钥，应用将运行在模拟模式。
 
-3. Start the development server:
+3. 启动开发服务器：
 
    ```bash
    pnpm dev
    ```
 
-4. Visit http://localhost:3000 to explore the demo UI.
+4. 访问 http://localhost:3000 体验演示界面。
 
-## Deployment on Vercel
+## 部署到 Vercel
 
-1. Create a new project in the Vercel dashboard and import this example folder.
-2. Provision a [Vercel Postgres](https://vercel.com/docs/storage/vercel-postgres) database and add the connection string as environment variables (see `.env.example`).
-3. Configure your Alipay open platform application and set the corresponding environment variables. Point the notify URL to `https://<your-domain>/api/alipay/notify`.
-4. Deploy. The project uses the Edge Runtime friendly APIs so it works in serverless environments.
+1. 在 Vercel 控制台创建新项目并导入本示例目录。
+2. 申请并配置 [Vercel Postgres](https://vercel.com/docs/storage/vercel-postgres) 数据库，将连接串写入环境变量（参考 `.env.example`）。
+3. 在支付宝开放平台配置应用信息与密钥，并设置对应环境变量。请将异步通知地址指向 `https://<your-domain>/api/alipay/notify`。
+4. 部署项目。本示例使用适配 Edge Runtime 的 API，可直接运行在无服务器环境。
 
-## Environment Variables
+## 环境变量
 
-See `.env.example` for the full list. At minimum set:
+完整列表见 `.env.example`。至少需要设置：
 
 - `ALIPAY_APP_ID`
 - `ALIPAY_PRIVATE_KEY`
-- `ALIPAY_ALIPAY_PUBLIC_KEY` (or certificate paths)
+- `ALIPAY_ALIPAY_PUBLIC_KEY`（或证书路径）
 - `ALIPAY_NOTIFY_URL`
-- `POSTGRES_URL` / `POSTGRES_PRISMA_URL` (or other Vercel Postgres secrets)
+- `POSTGRES_URL` / `POSTGRES_PRISMA_URL`（或其他 Vercel Postgres 密钥）
 
-When the values are missing the app will automatically simulate successful payments so you can iterate on the UI without external dependencies.
+缺少上述变量时，应用会自动模拟支付成功，便于在无外部依赖的情况下调试界面。
 
-## Caveats
+## 注意事项
 
-- The mock mode does not contact Alipay and instantly marks orders as paid.
-- The webhook endpoint trusts any payload in mock mode. Enable real credentials before going live.
-- This demo intentionally keeps the styling minimal to focus on the integration details.
+- 模拟模式不会请求支付宝，并会立即将订单标记为已支付。
+- 在模拟模式下，回调端点会信任所有请求。上线前请务必启用真实凭据。
+- 为突出集成逻辑，示例页面仅保留最小化样式。
 
-## License
+## 许可协议
 
-MIT — same as the parent repository.
+与上级仓库一致，均为 MIT 许可证。
