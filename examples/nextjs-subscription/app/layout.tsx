@@ -19,6 +19,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <Link href="/" className="site-logo">
               {siteName}
             </Link>
+          </header>
+          <section className="hero-card">
+            <span className="hero-chip">极速部署 · 无需运维</span>
+            <h1 className="hero-title">解锁您的专属订阅服务</h1>
+            <p className="hero-subtitle">
+              通过支付宝扫码即可完成支付，支付成功后自动开通权限。支持邮箱自助查询历史订单与教学链接，适配
+              Vercel Serverless 环境。
+            </p>
             <nav className="site-actions">
               <Link className="nav-button" href="/orders">
                 订单查询
@@ -32,14 +40,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 在线客服
               </a>
             </nav>
-          </header>
-          <section className="hero-card">
-            <span className="hero-chip">极速部署 · 无需运维</span>
-            <h1 className="hero-title">解锁您的专属订阅服务</h1>
-            <p className="hero-subtitle">
-              通过支付宝扫码即可完成支付，支付成功后自动开通权限。支持邮箱自助查询历史订单与教学链接，适配
-              Vercel Serverless 环境。
-            </p>
           </section>
           <main className="page-content">{children}</main>
           <footer className="page-footer">

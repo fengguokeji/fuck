@@ -127,6 +127,12 @@ body {
   color: #475569;
 }
 
+.hero-card .site-actions {
+  margin-top: 28px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 .page-content {
   display: flex;
   flex-direction: column;
