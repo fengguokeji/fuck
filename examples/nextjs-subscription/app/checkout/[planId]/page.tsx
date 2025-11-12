@@ -31,25 +31,6 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
       </div>
 
       <div className="checkout-layout">
-        <div className="checkout-mobile-summary">
-          <span className="checkout-mobile-summary__chip">当前套餐</span>
-          <div className="checkout-mobile-summary__heading">
-            <h2>{plan.name}</h2>
-            <p>
-              <strong>¥{plan.price}</strong>
-              <span>/{plan.billingCycle}</span>
-            </p>
-          </div>
-          <p className="checkout-mobile-summary__description">{plan.description}</p>
-          <ul className="checkout-mobile-summary__features">
-            {plan.features.map((feature) => (
-              <li key={feature}>{feature}</li>
-            ))}
-          </ul>
-          <p className="checkout-mobile-summary__hint">
-            支持使用同一联系邮箱多次下单，历史订单与二维码可在订单查询页面随时查看。
-          </p>
-        </div>
         <div className="checkout-plan">
           <div className="plan-card checkout-plan-card">
             {plan.highlight && <span className="plan-badge">{plan.highlight}</span>}

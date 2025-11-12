@@ -568,10 +568,6 @@ body {
   gap: 24px;
 }
 
-.checkout-mobile-summary {
-  display: none;
-}
-
 @media (max-width: 767px) {
   .checkout-card {
     padding: 28px 20px 32px;
@@ -595,89 +591,6 @@ body {
     display: flex;
     flex-direction: column;
     gap: 20px;
-  }
-
-  .checkout-mobile-summary {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 24px 20px;
-    border-radius: 24px;
-    border: 1px solid rgba(148, 163, 184, 0.45);
-    background: linear-gradient(160deg, rgba(191, 219, 254, 0.35) 0%, rgba(226, 232, 240, 0.4) 40%, #ffffff 100%);
-    box-shadow: 0 18px 40px rgba(59, 130, 246, 0.18);
-  }
-
-  .checkout-mobile-summary__chip {
-    align-self: flex-start;
-    padding: 4px 12px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #1d4ed8;
-    background: rgba(37, 99, 235, 0.12);
-  }
-
-  .checkout-mobile-summary__heading {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .checkout-mobile-summary__heading h2 {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 700;
-    color: #0f172a;
-  }
-
-  .checkout-mobile-summary__heading p {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 700;
-    color: #1d4ed8;
-    display: inline-flex;
-    align-items: baseline;
-    gap: 4px;
-  }
-
-  .checkout-mobile-summary__heading span {
-    font-size: 12px;
-    font-weight: 500;
-    color: #64748b;
-  }
-
-  .checkout-mobile-summary__description {
-    margin: 0;
-    font-size: 13px;
-    line-height: 1.7;
-    color: #475569;
-  }
-
-  .checkout-mobile-summary__features {
-    margin: 0;
-    padding-left: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    font-size: 12px;
-    color: #334155;
-  }
-
-  .checkout-mobile-summary__features li::marker {
-    color: #2563eb;
-  }
-
-  .checkout-mobile-summary__hint {
-    margin: 0;
-    font-size: 11px;
-    line-height: 1.7;
-    color: #475569;
-    padding: 12px 14px;
-    border-radius: 16px;
-    border: 1px dashed rgba(148, 163, 184, 0.5);
-    background: rgba(226, 232, 240, 0.45);
   }
 
   .form-row .primary-button {
