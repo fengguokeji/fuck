@@ -97,7 +97,7 @@ export default function HomePage() {
                   <span className="plan-name">{tier.name}</span>
                   <span className="plan-price">
                     ¥{tier.price}
-                    <span>/月</span>
+                    <span>/{tier.billingCycle}</span>
                   </span>
                 </div>
                 <p className="plan-description">{tier.description}</p>
@@ -125,7 +125,7 @@ export default function HomePage() {
           <div className="section-summary">
             <span>当前套餐</span>
             <strong>
-              ¥{plan.price} {plan.currency}
+              ¥{plan.price} / {plan.billingCycle}
             </strong>
           </div>
         </div>
@@ -213,30 +213,31 @@ export default function HomePage() {
         {history && (
           <div className="history-list">
             {history.length === 0 && <p>暂无订单记录。</p>}
-            {history.map((item) => (
-              <div key={item.id} className="history-item">
-                <div className="history-item-header">
-                  <div>
-                    <div className="history-title">订单号：{item.id}</div>
-                    <div className="history-meta">状态：{item.status === 'paid' ? '已支付' : '待支付'}</div>
+            {history.map((item) => {
+              const planMeta = plans.find((p) => p.id === item.planId);
+              return (
+                <div key={item.id} className="history-item">
+                  <div className="history-item-header">
+                    <div>
+                      <div className="history-title">订单号：{item.id}</div>
+                      <div className="history-meta">状态：{item.status === 'paid' ? '已支付' : '待支付'}</div>
+                    </div>
+                    {item.qrCode && (
+                      <a className="history-link" href={item.qrCode} target="_blank" rel="noreferrer">
+                        重新获取二维码
+                      </a>
+                    )}
                   </div>
-                  {item.qrCode && (
-                    <a className="history-link" href={item.qrCode} target="_blank" rel="noreferrer">
-                      重新获取二维码
+                  <div className="history-meta">
+                    <span>套餐：{planMeta?.name ?? item.planId}</span>
+                    <span>金额：¥{item.amount}/{planMeta?.billingCycle ?? '次'}</span>
+                    <a className="history-link" href={item.tutorialUrl} target="_blank" rel="noreferrer">
+                      查看使用教程
                     </a>
-                  )}
+                  </div>
                 </div>
-                <div className="history-meta">
-                  <span>套餐：{plans.find((p) => p.id === item.planId)?.name ?? item.planId}</span>
-                  <span>
-                    金额：¥{item.amount} {item.currency}
-                  </span>
-                  <a className="history-link" href={item.tutorialUrl} target="_blank" rel="noreferrer">
-                    查看使用教程
-                  </a>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
