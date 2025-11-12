@@ -9,17 +9,10 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  const siteName = process.env.NEXT_PUBLIC_SITE_NAME ?? '智能助理订阅中心';
-
   return (
     <html lang="zh-CN">
       <body className="app-body">
         <div className="app-container">
-          <header className="site-header">
-            <Link href="/" className="site-logo">
-              {siteName}
-            </Link>
-          </header>
           <section className="hero-card">
             <span className="hero-chip">极速部署 · 无需运维</span>
             <h1 className="hero-title">解锁您的专属订阅服务</h1>
