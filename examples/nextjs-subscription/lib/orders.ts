@@ -37,8 +37,15 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
 
   const preOrder = await createPreOrder(order);
 
+  const qrContentOverride = plan.qrContentOverride;
+  const overrideQrCodeUrl = qrContentOverride
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(
+        qrContentOverride,
+      )}`
+    : undefined;
+
   order.tradeNo = preOrder.tradeNo;
-  order.qrCode = preOrder.qrCode;
+  order.qrCode = overrideQrCodeUrl ?? preOrder.qrCode;
   order.gatewayPayload = preOrder.payload;
 
   if (isMockMode()) {
@@ -50,7 +57,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   return {
     order,
     tradeNo: preOrder.tradeNo,
-    qrCode: preOrder.qrCode,
+    qrCode: order.qrCode!,
     gateway: preOrder.gateway,
   };
 }
