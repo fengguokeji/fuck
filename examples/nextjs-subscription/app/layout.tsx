@@ -14,7 +14,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="app-body">
         <div className="app-container">
           <section className="hero-card">
-            <span className="hero-chip">极速部署 · 无需运维</span>
             <h1 className="hero-title">解锁您的专属订阅服务</h1>
             <p className="hero-subtitle">
               通过支付宝扫码即可完成支付，支付成功后自动开通权限。支持邮箱自助查询历史订单与教学链接，适配
