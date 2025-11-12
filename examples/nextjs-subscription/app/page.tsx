@@ -125,7 +125,7 @@ export default function HomePage() {
           <div className="section-summary">
             <span>当前套餐</span>
             <strong>
-              ¥{plan.price.toFixed(2)} {plan.currency}
+              ¥{plan.price} {plan.currency}
             </strong>
           </div>
         </div>
