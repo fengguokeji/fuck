@@ -18,49 +18,23 @@ body {
   margin: 0;
   color: #0f172a;
   background: #f5f7fb;
-  overflow: hidden;
 }
 
 .app-body {
-  margin: 0;
   min-height: 100vh;
+  margin: 0;
   background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 60%, #e2e8f0 100%);
   color: inherit;
 }
 
-.viewport-shell {
-  width: 100vw;
-  height: 100vh;
-  padding: 16px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.viewport-scale {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-}
-
-.viewport-scale-inner {
-  transform-origin: top center;
-  will-change: transform;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-}
-
 .app-container {
   position: relative;
-  width: 1080px;
-  max-width: 1080px;
-  padding: 40px 24px 48px;
+  width: min(1080px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 56px 0 72px;
   display: flex;
   flex-direction: column;
-  gap: 36px;
+  gap: 56px;
 }
 
 .site-header {
@@ -118,10 +92,10 @@ body {
 .hero-card {
   background: linear-gradient(150deg, rgba(59, 130, 246, 0.12) 0%, rgba(191, 219, 254, 0.45) 48%, #ffffff 100%);
   border: 1px solid rgba(148, 163, 184, 0.25);
-  border-radius: 24px;
-  padding: clamp(28px, 6vw, 40px);
+  border-radius: 28px;
+  padding: 48px clamp(24px, 6vw, 64px);
   text-align: center;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 32px 80px rgba(15, 23, 42, 0.08);
   backdrop-filter: blur(18px);
 }
 
@@ -138,8 +112,8 @@ body {
 }
 
 .hero-title {
-  margin: 16px 0 12px;
-  font-size: clamp(28px, 4.4vw, 40px);
+  margin: 18px 0 12px;
+  font-size: clamp(32px, 5vw, 44px);
   font-weight: 700;
   letter-spacing: -0.02em;
   color: #0f172a;
@@ -160,29 +134,15 @@ body {
 }
 
 .page-content {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 40px;
 }
 
 .plan-section {
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-
-@media (min-width: 1100px) {
-  .plan-section {
-    display: grid;
-    grid-template-columns: 1.1fr 0.9fr;
-    align-items: stretch;
-    gap: 24px;
-  }
-
-  .plan-grid {
-    height: 100%;
-  }
 }
 
 .plan-grid {
