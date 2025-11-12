@@ -27,7 +27,6 @@ export const plans: SubscriptionPlan[] = [
     description: '协作与运营一体化，为成长型团队打造高效协同工作台。',
     features: ['无限提示词迭代', '团队空间与权限管理', '优先邮箱支持', '每周实战直播回放'],
     tutorialUrl: 'https://example.com/tutorials/pro',
-    highlight: '热门推荐',
   },
   {
     id: 'enterprise',
