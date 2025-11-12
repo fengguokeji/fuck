@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { findPlan } from './plans';
+import { getPlanQrPayload } from './server/plan-secrets';
 import type { OrderRecord, OrderStatus } from './db';
 import { saveOrder, updateOrder, findOrdersByEmail, findOrderById } from './db';
 import { createPreOrder, isMockMode } from './alipay';
@@ -37,7 +38,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
 
   const preOrder = await createPreOrder(order);
 
-  const qrContentOverride = plan.qrContentOverride;
+  const qrContentOverride = getPlanQrPayload(plan.id);
   const overrideQrCodeUrl = qrContentOverride
     ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(
         qrContentOverride,

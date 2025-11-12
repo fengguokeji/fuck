@@ -8,7 +8,6 @@ export type SubscriptionPlan = {
   features: string[];
   tutorialUrl: string;
   highlight?: string;
-  qrContentOverride?: string;
 };
 
 export const plans: SubscriptionPlan[] = [
@@ -21,8 +20,6 @@ export const plans: SubscriptionPlan[] = [
     description: '快速体验核心 AI 工作流，为个人开发者提供低门槛的入门方案。',
     features: ['10 份精选提示词包', '每月自动化模版更新', '社区交流与答疑'],
     tutorialUrl: 'https://example.com/tutorials/starter',
-    qrContentOverride:
-      'sub://aHR0cHM6Ly9yZXdhci50cmFmZmljbWFuYWdlci5uZXQvZWRnZXN1YnMvY2xpZW50P3Rva2VuPWNjMzRiZDQ3YzlmNWM4MGY4N2IyOTYyZTczMDZjMzkz#client',
   },
   {
     id: 'pro',
@@ -33,8 +30,6 @@ export const plans: SubscriptionPlan[] = [
     description: '协作与运营一体化，为成长型团队打造高效协同工作台。',
     features: ['无限提示词迭代', '团队空间与权限管理', '优先邮箱支持', '每周实战直播回放'],
     tutorialUrl: 'https://example.com/tutorials/pro',
-    qrContentOverride:
-      'sub://aHR0cHM6Ly9yZXdhci50cmFmZmljbWFuYWdlci5uZXQvZWRnZXN1YnMvY2xpZW50P3Rva2VuPWNjMzRiZDQ3YzlmNWM4MGY4N2IyOTYyZTczMDZjMzkz#clien',
   },
   {
     id: 'enterprise',
@@ -45,8 +40,6 @@ export const plans: SubscriptionPlan[] = [
     description: '面向企业的安全合规方案，覆盖交付、运维与监控分析。',
     features: ['定制化入门培训', '专属解决方案架构师', '使用分析与报表', 'SLA 专线支持'],
     tutorialUrl: 'https://example.com/tutorials/enterprise',
-    qrContentOverride:
-      'sub://aHR0cHM6Ly9yZXdhci50cmFmZmljbWFuYWdlci5uZXQvZWRnZXN1YnMvY2xpZW50P3Rva2VuPWNjMzRiZDQ3YzlmNWM4MGY4N2IyOTYyZTczMDZjMzkz#clie',
   },
   {
     id: 'ultimate',
@@ -62,8 +55,6 @@ export const plans: SubscriptionPlan[] = [
       '高级安全审计与巡检',
     ],
     tutorialUrl: 'https://example.com/tutorials/ultimate',
-    qrContentOverride:
-      'sub://aHR0cHM6Ly9yZXdhci50cmFmZmljbWFuYWdlci5uZXQvZWRnZXN1YnMvY2xpZW50P3Rva2VuPWNjMzRiZDQ3YzlmNWM4MGY4N2IyOTYyZTczMDZjMzkz#cli',
   },
 ];
 
