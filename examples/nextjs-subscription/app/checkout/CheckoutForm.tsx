@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { FormEvent, useState } from 'react';
 import type { SubscriptionPlan } from '../../lib/plans';
 
 type CreateOrderResponse = {
@@ -23,15 +23,25 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function submitOrder() {
+  async function submitOrder(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (creating) {
+      return;
+    }
     setError(null);
+    setOrder(null);
     setCreating(true);
     try {
+      const normalizedEmail = email.trim();
+      if (!normalizedEmail) {
+        throw new Error('请输入有效的联系邮箱');
+      }
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, planId: plan.id }),
+        body: JSON.stringify({ email: normalizedEmail, planId: plan.id }),
       });
+      setEmail(normalizedEmail);
       const data = (await res.json()) as CreateOrderResponse & { error?: string };
       if (!res.ok) {
         throw new Error(data.error ?? '无法创建订单');
@@ -45,7 +55,7 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
   }
 
   return (
-    <div className="checkout-form">
+    <form className="checkout-form" onSubmit={submitOrder}>
       <div className="checkout-form-header">
         <div className="section-header-text">
           <h2>填写信息并下单</h2>
@@ -71,9 +81,12 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             type="email"
+            inputMode="email"
+            autoComplete="email"
+            required
           />
         </div>
-        <button onClick={submitOrder} disabled={creating || !email} className="primary-button">
+        <button type="submit" disabled={creating || !email} className="primary-button">
           {creating ? '正在创建订单…' : `使用套餐 ${plan.name}`}
         </button>
       </div>
@@ -117,6 +130,6 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
           </div>
         </div>
       )}
-    </div>
+    </form>
   );
 }

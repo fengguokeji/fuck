@@ -337,6 +337,10 @@ body {
     flex-direction: row;
     align-items: flex-end;
   }
+
+  .form-row .primary-button {
+    width: auto;
+  }
 }
 
 .input-field {
@@ -547,6 +551,10 @@ body {
   gap: 18px;
 }
 
+.checkout-header .secondary-button {
+  align-self: flex-start;
+}
+
 @media (min-width: 768px) {
   .checkout-header {
     flex-direction: row;
@@ -558,6 +566,63 @@ body {
 .checkout-layout {
   display: grid;
   gap: 24px;
+}
+
+@media (max-width: 767px) {
+  .checkout-card {
+    padding: 28px 20px 32px;
+    gap: 24px;
+  }
+
+  .checkout-header .section-header-text {
+    display: none;
+  }
+
+  .checkout-header .secondary-button {
+    width: 100%;
+    justify-content: center;
+    font-weight: 600;
+    border-color: rgba(59, 130, 246, 0.32);
+    background: linear-gradient(180deg, rgba(226, 232, 240, 0.5) 0%, #f8fbff 100%);
+    color: #1d4ed8;
+  }
+
+  .checkout-layout {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .form-row .primary-button {
+    width: 100%;
+  }
+
+  .checkout-plan-hint {
+    font-size: 11px;
+    line-height: 1.7;
+  }
+
+  .checkout-plan-card {
+    padding: 24px 20px;
+    gap: 14px;
+  }
+
+  .checkout-plan-card .plan-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .checkout-plan-card .plan-price {
+    font-size: 26px;
+  }
+
+  .checkout-form {
+    gap: 24px;
+  }
+
+  .checkout-form .section-summary {
+    width: 100%;
+  }
 }
 
 @media (min-width: 960px) {
