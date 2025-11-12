@@ -36,10 +36,7 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
             {plan.highlight && <span className="plan-badge">{plan.highlight}</span>}
             <div className="plan-title">
               <span className="plan-name">{plan.name}</span>
-              <span className="plan-price">
-                ¥{plan.price}
-                <span>/{plan.billingCycle}</span>
-              </span>
+              <span className="plan-price">¥{plan.price}</span>
             </div>
             <p className="plan-description">{plan.description}</p>
             <ul className="plan-feature-list">

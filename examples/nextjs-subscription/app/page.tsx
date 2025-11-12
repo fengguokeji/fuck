@@ -5,7 +5,6 @@ export default function HomePage() {
   return (
     <>
       <section className="hero-card">
-        <span className="hero-chip">极速部署 · 无需运维</span>
         <h1 className="hero-title">解锁您的专属订阅服务</h1>
         <p className="hero-subtitle">
           通过支付宝扫码即可完成支付，支付成功后自动开通权限。支持邮箱自助查询历史订单与教学链接，适配 Vercel
@@ -33,10 +32,7 @@ export default function HomePage() {
                 {tier.highlight && <span className="plan-badge">{tier.highlight}</span>}
                 <div className="plan-title">
                   <span className="plan-name">{tier.name}</span>
-                  <span className="plan-price">
-                    ¥{tier.price}
-                    <span>/{tier.billingCycle}</span>
-                  </span>
+                  <span className="plan-price">¥{tier.price}</span>
                 </div>
                 <p className="plan-description">{tier.description}</p>
                 <ul className="plan-feature-list">

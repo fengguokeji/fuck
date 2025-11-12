@@ -65,9 +65,7 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
         </div>
         <div className="section-summary">
           <span>当前套餐</span>
-          <strong>
-            ¥{plan.price} / {plan.billingCycle}
-          </strong>
+          <strong>¥{plan.price}</strong>
         </div>
       </div>
 

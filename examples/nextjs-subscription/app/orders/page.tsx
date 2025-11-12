@@ -123,7 +123,7 @@ export default function OrdersPage() {
                     <div className="history-info">
                       <strong>{planMeta?.name ?? item.planId}</strong>
                       <span>
-                        金额：¥{item.amount}/{planMeta?.billingCycle ?? '次'}
+                        金额：¥{item.amount}
                       </span>
                       <a className="history-link" href={item.tutorialUrl} target="_blank" rel="noreferrer">
                         查看使用教程

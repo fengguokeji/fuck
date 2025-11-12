@@ -99,18 +99,6 @@ body {
   backdrop-filter: blur(18px);
 }
 
-.hero-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #1d4ed8;
-  background: rgba(59, 130, 246, 0.12);
-}
-
 .hero-title {
   margin: 18px 0 12px;
   font-size: clamp(32px, 5vw, 44px);
