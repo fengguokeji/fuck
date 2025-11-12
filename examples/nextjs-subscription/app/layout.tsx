@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import './globals.css';
 import type { ReactNode } from 'react';
 
@@ -13,26 +12,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="zh-CN">
       <body className="app-body">
         <div className="app-container">
-          <section className="hero-card">
-            <h1 className="hero-title">解锁您的专属订阅服务</h1>
-            <p className="hero-subtitle">
-              通过支付宝扫码即可完成支付，支付成功后自动开通权限。支持邮箱自助查询历史订单与教学链接，适配
-              Vercel Serverless 环境。
-            </p>
-            <nav className="site-actions">
-              <Link className="nav-button" href="/orders">
-                订单查询
-              </Link>
-              <a
-                className="nav-button nav-button--ghost"
-                href="https://tawk.to/chat/67078bc702d78d1a30ef65d0/1i9qnk1me"
-                target="_blank"
-                rel="noreferrer"
-              >
-                在线客服
-              </a>
-            </nav>
-          </section>
           <main className="page-content">{children}</main>
           <footer className="page-footer">
             构建于 alipay-sdk 示例项目。如需支持，请联系{' '}
