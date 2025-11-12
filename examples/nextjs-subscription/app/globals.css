@@ -597,10 +597,6 @@ body {
     width: 100%;
   }
 
-  .checkout-plan {
-    display: none;
-  }
-
   .checkout-plan-hint {
     font-size: 11px;
     line-height: 1.7;
@@ -626,6 +622,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+@media (max-width: 767px) {
+  .checkout-plan {
+    display: none;
+  }
 }
 
 .checkout-plan-card {
