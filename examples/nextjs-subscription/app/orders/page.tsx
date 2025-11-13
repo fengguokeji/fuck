@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { plans } from '../../lib/plans';
 
@@ -70,6 +71,9 @@ export default function OrdersPage() {
             <h2>订单查询中心</h2>
             <p>输入下单邮箱后，将展示全部历史订单，可直接重新获取二维码与教学链接。</p>
           </div>
+          <Link href="/" className="secondary-button">
+            返回套餐列表
+          </Link>
         </div>
 
         <form className="form-row" onSubmit={handleSubmit}>
