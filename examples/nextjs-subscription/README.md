@@ -67,6 +67,7 @@ examples/nextjs-subscription
      - `POSTGRES_PASSWORD`
      - `POSTGRES_DATABASE`
    - 首次部署或首次收到订单请求时，应用会自动在数据库中创建 `subscription_orders` 表，无需额外迁移脚本。
+   - **若在 Vercel 中添加的是 Supabase Postgres：** 集成会额外注入 `SUPABASE_URL`、`SUPABASE_SERVICE_ROLE_KEY`、`SUPABASE_JWT_SECRET` 以及 `NEXT_PUBLIC_SUPABASE_ANON_KEY` 等变量，同时同样提供 `POSTGRES_*` 连接串。本示例会在检测到这些变量或 `supabase.co` 域名时自动切换到 `pg` 连接池驱动，整个下单/回调流程依旧可以自动建表与读写，无需额外改动。
 
 4. **配置支付宝参数**
    - 在 [支付宝开放平台](https://open.alipay.com/) 创建应用并获取以下信息：
@@ -107,7 +108,8 @@ examples/nextjs-subscription
 | `ALIPAY_ALIPAY_PUBLIC_KEY` | 支付宝公钥（或改用证书配置）。|
 | `ALIPAY_NOTIFY_URL` | 支付宝服务端通知回调地址；部署到 Vercel 后可留空，由应用自动推导。|
 | `ALIPAY_USE_SANDBOX` | `true` 时使用沙箱网关，适合调试。|
-| `POSTGRES_URL` 等 | Vercel Postgres 连接信息，详见上文。|
+| `POSTGRES_URL` 等 | Vercel Postgres 或 Supabase Postgres 连接信息，详见上文。|
+| `SUPABASE_URL` 等 | 使用 Vercel × Supabase 集成时提供的变量，绑定后示例会自动启用兼容 Supabase 的数据库驱动。|
 | `NEXT_PUBLIC_SITE_NAME` | 页面展示的站点名称。|
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | 页面展示的支持邮箱。|
 
