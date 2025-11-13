@@ -127,6 +127,12 @@ body {
   gap: 40px;
 }
 
+.home-hero-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
 .plan-section {
   display: flex;
   flex-direction: column;

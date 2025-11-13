@@ -3,7 +3,7 @@ import { plans } from '../lib/plans';
 
 export default function HomePage() {
   return (
-    <>
+    <div className="home-hero-stack">
       <section className="hero-card">
         <h1 className="hero-title">解锁您的专属订阅服务</h1>
         <p className="hero-subtitle">
@@ -61,6 +61,6 @@ export default function HomePage() {
           </div>
         </section>
       </div>
-    </>
+    </div>
   );
 }
