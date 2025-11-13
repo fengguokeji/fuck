@@ -254,6 +254,49 @@ body {
   color: #2563eb;
 }
 
+@media (max-width: 640px) {
+  .plan-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+  }
+
+  .plan-card {
+    padding: 20px 18px 22px;
+    border-radius: 18px;
+    gap: 12px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  }
+
+  .plan-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .plan-name {
+    font-size: 16px;
+  }
+
+  .plan-price {
+    font-size: 24px;
+  }
+
+  .plan-description {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .plan-feature-list {
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .plan-feature::before {
+    font-size: 10px;
+    margin-top: 3px;
+  }
+}
+
 .info-card .section-summary {
   align-self: stretch;
 }

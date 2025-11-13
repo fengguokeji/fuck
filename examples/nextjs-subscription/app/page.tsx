@@ -56,7 +56,6 @@ export default function HomePage() {
               </p>
             </div>
             <div className="section-summary">
-              <span>下单入口</span>
               <strong>填写邮箱即可生成二维码</strong>
             </div>
           </div>
