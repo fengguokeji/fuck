@@ -56,6 +56,15 @@ const POSTGRES_CONNECTION_STRING =
   process.env.POSTGRES_URL_NON_POOLING ||
   null;
 
+const IS_SUPABASE_CONNECTION = Boolean(
+  process.env.SUPABASE_URL ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_JWT_SECRET ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    POSTGRES_CONNECTION_STRING?.includes('supabase') ||
+    process.env.POSTGRES_HOST?.includes('supabase')
+);
+
 const PG_POOL_CONFIG: PoolConfig | null = (() => {
   if (POSTGRES_CONNECTION_STRING) {
     return { connectionString: POSTGRES_CONNECTION_STRING } satisfies PoolConfig;
@@ -67,6 +76,7 @@ const PG_POOL_CONFIG: PoolConfig | null = (() => {
       user: process.env.POSTGRES_USER,
       password: process.env.POSTGRES_PASSWORD,
       database: process.env.POSTGRES_DATABASE,
+      ssl: IS_SUPABASE_CONNECTION ? { rejectUnauthorized: false } : undefined,
     } satisfies PoolConfig;
   }
   return null;
@@ -74,13 +84,7 @@ const PG_POOL_CONFIG: PoolConfig | null = (() => {
 
 const POSTGRES_ENABLED = Boolean(PG_POOL_CONFIG);
 
-const SHOULD_USE_POOL_DRIVER = Boolean(
-  PG_POOL_CONFIG &&
-    (process.env.SUPABASE_URL ||
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      POSTGRES_CONNECTION_STRING?.includes('supabase') ||
-      process.env.POSTGRES_HOST?.includes('supabase'))
-);
+const SHOULD_USE_POOL_DRIVER = Boolean(PG_POOL_CONFIG && IS_SUPABASE_CONNECTION);
 
 let pool: Pool | null = null;
 
