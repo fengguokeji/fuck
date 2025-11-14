@@ -24,12 +24,17 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           <h2>订单详情</h2>
         </div>
         <div className="order-detail-actions">
-          <Link href="/orders" className="secondary-button">
-            返回订单查询
-          </Link>
           <Link href="/" className="secondary-button">
             返回套餐列表
           </Link>
+          <a
+            className="primary-button tutorial-cta-button"
+            href={order.tutorialUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            点击查看教程
+          </a>
         </div>
       </div>
 
@@ -46,18 +51,6 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
               ? '订单已同步为已支付，您可以直接根据教学链接完成配置。'
               : '打开支付宝扫描二维码完成支付，系统会在成功后自动刷新订单状态。'}
           </p>
-        </div>
-        <div className="order-details">
-          <div className="detail-item">
-            <span className="detail-label">订单编号</span>
-            <span className="detail-value">{order.id}</span>
-          </div>
-          <div className="detail-item">
-            <span className="detail-label">教学指引</span>
-            <a className="tutorial-link" href={order.tutorialUrl} target="_blank" rel="noreferrer">
-              查看使用教程
-            </a>
-          </div>
         </div>
       </div>
     </section>
