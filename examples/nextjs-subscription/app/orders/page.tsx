@@ -26,7 +26,7 @@ function formatDateTime(input: string) {
   if (Number.isNaN(date.getTime())) {
     return input;
   }
-  return date.toLocaleString('zh-CN', { hour12: false });
+  return date.toLocaleDateString('zh-CN');
 }
 
 export default function OrdersPage() {
@@ -105,7 +105,7 @@ export default function OrdersPage() {
                 <div key={item.id} className="history-item">
                   <div className="history-item-header">
                     <div>
-                      <div className="history-title">订单号：{item.id}</div>
+                      <div className="history-title">{planMeta?.name ?? item.planId}</div>
                       <div className="history-meta">
                         <span>状态：{item.status === 'paid' ? '已支付' : '待支付'}</span>
                         {item.tradeNo && <span>流水号：{item.tradeNo}</span>}
@@ -125,10 +125,6 @@ export default function OrdersPage() {
                       )}
                     </div>
                     <div className="history-info">
-                      <strong>{planMeta?.name ?? item.planId}</strong>
-                      <span>
-                        金额：¥{item.amount}
-                      </span>
                       <a
                         className="secondary-button history-button"
                         href={item.tutorialUrl}
