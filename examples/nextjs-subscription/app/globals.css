@@ -582,45 +582,6 @@ body {
   text-decoration: underline;
 }
 
-.notice-box {
-  border-radius: 18px;
-  border: 1px solid rgba(203, 213, 225, 0.8);
-  background: #f1f5f9;
-  padding: 18px;
-  font-size: 12px;
-  line-height: 1.8;
-  color: #475569;
-  width: 100%;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-  min-width: 0;
-}
-
-.notice-box--link {
-  background: rgba(191, 219, 254, 0.35);
-  border-color: rgba(148, 163, 184, 0.6);
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-top: 12px;
-  width: 100%;
-  text-align: center;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-}
-
-.notice-box--link a {
-  color: #1d4ed8;
-  font-weight: 600;
-  text-decoration: none;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-}
-
-.notice-box--link a:hover {
-  text-decoration: underline;
-}
-
 .checkout-card {
   gap: 32px;
 }

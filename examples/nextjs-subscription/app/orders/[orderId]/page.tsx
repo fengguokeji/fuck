@@ -1,15 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getOrder } from '../../../lib/orders';
-import { findPlan } from '../../../lib/plans';
-
-function formatDateTime(date: Date) {
-  return new Intl.DateTimeFormat('zh-CN', {
-    dateStyle: 'medium',
-    timeStyle: 'medium',
-    hour12: false,
-  }).format(date);
-}
 
 type OrderDetailPageProps = {
   params: {
@@ -24,18 +15,13 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
     notFound();
   }
 
-  const plan = findPlan(order.planId);
   const isPaid = order.status === 'paid';
-  const amountLabel = order.currency === 'CNY' ? `¥${order.amount}` : `${order.amount} ${order.currency}`;
 
   return (
     <section className="section-card order-detail-card">
       <div className="section-header">
         <div className="section-header-text">
           <h2>订单详情</h2>
-          <p>
-            订单编号 {order.id} 已记录在系统中，所有信息也会发送至 {order.email}，您可以在此页面重新获取二维码与教学指引。
-          </p>
         </div>
         <div className="order-detail-actions">
           <Link href="/orders" className="secondary-button">
@@ -45,37 +31,6 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
             返回套餐列表
           </Link>
         </div>
-      </div>
-
-      <div className="order-details order-detail-meta">
-        <div className="detail-item">
-          <span className="detail-label">当前套餐</span>
-          <span className="detail-value">{plan?.name ?? order.planId}</span>
-        </div>
-        <div className="detail-item">
-          <span className="detail-label">下单邮箱</span>
-          <span className="detail-value">{order.email}</span>
-        </div>
-        <div className="detail-item">
-          <span className="detail-label">订单金额</span>
-          <span className="detail-value">{amountLabel}</span>
-        </div>
-        <div className="detail-item">
-          <span className="detail-label">下单时间</span>
-          <span className="detail-value">{formatDateTime(order.createdAt)}</span>
-        </div>
-        <div className="detail-item">
-          <span className="detail-label">订单状态</span>
-          <span className="detail-value" style={{ color: isPaid ? '#16a34a' : '#f59e0b' }}>
-            {isPaid ? '已支付' : '待支付'}
-          </span>
-        </div>
-        {order.tradeNo && (
-          <div className="detail-item">
-            <span className="detail-label">支付流水号</span>
-            <span className="detail-value">{order.tradeNo}</span>
-          </div>
-        )}
       </div>
 
       <div className="payment-panel">
@@ -102,12 +57,6 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
             <a className="tutorial-link" href={order.tutorialUrl} target="_blank" rel="noreferrer">
               查看使用教程
             </a>
-          </div>
-          <div className="notice-box">
-            支付完成后，如需再次获取二维码或教学链接，可返回订单查询页面并输入邮箱 {order.email} 进行检索。
-          </div>
-          <div className="notice-box notice-box--link">
-            <Link href="/orders">前往订单查询页面</Link>
           </div>
         </div>
       </div>
