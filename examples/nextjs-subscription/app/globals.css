@@ -428,6 +428,7 @@ body {
   font-weight: 600;
   color: #f8fafc;
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  text-decoration: none;
   cursor: pointer;
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
@@ -581,23 +582,24 @@ body {
   overflow-wrap: anywhere;
 }
 
-.tutorial-callout {
-  padding: 18px;
-  border-radius: 20px;
-  border: 1px solid rgba(191, 219, 254, 0.8);
-  background: linear-gradient(135deg, rgba(219, 234, 254, 0.6), rgba(191, 219, 254, 0.4));
-  gap: 12px;
-}
-
-.tutorial-button {
+.tutorial-cta-button {
   width: 100%;
-  max-width: 280px;
-  font-size: 14px;
+  margin-top: 4px;
+  gap: 10px;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  box-shadow: 0 24px 55px rgba(37, 99, 235, 0.32);
 }
 
-@media (min-width: 480px) {
-  .tutorial-button {
+.tutorial-cta-button::after {
+  content: '↗';
+  font-size: 18px;
+}
+
+@media (min-width: 520px) {
+  .tutorial-cta-button {
     width: auto;
+    justify-self: flex-start;
   }
 }
 

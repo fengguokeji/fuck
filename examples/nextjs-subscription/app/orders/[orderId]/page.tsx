@@ -52,12 +52,14 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
             <span className="detail-label">订单编号</span>
             <span className="detail-value">{order.id}</span>
           </div>
-          <div className="detail-item tutorial-callout">
-            <span className="detail-label detail-label-highlight">教学指引</span>
-            <a className="primary-button tutorial-button" href={order.tutorialUrl} target="_blank" rel="noreferrer">
-              查看使用教程
-            </a>
-          </div>
+          <a
+            className="primary-button tutorial-cta-button"
+            href={order.tutorialUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            点击查看教程
+          </a>
         </div>
       </div>
     </section>
