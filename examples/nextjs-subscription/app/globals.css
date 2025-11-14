@@ -616,12 +616,42 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  justify-content: center;
 }
 
 @media (min-width: 600px) {
   .order-detail-actions {
     flex-direction: row;
     align-items: center;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 599px) {
+  .order-detail-actions .secondary-button,
+  .order-detail-actions .tutorial-cta-button {
+    width: 100%;
+  }
+}
+
+.order-detail-card .section-header {
+  align-items: center;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .order-detail-card .section-header {
+    flex-direction: column;
+  }
+}
+
+.order-detail-card .section-header-text {
+  text-align: center;
+}
+
+@media (min-width: 900px) {
+  .payment-panel .qr-box {
+    justify-self: center;
   }
 }
 
