@@ -527,6 +527,17 @@ body {
   object-fit: contain;
 }
 
+.qr-missing {
+  width: 100%;
+  border-radius: 18px;
+  border: 1px dashed rgba(148, 163, 184, 0.6);
+  padding: 28px 18px;
+  font-size: 13px;
+  color: #475569;
+  background: rgba(148, 163, 184, 0.08);
+  text-align: center;
+}
+
 .qr-tip {
   font-size: 12px;
   line-height: 1.8;
@@ -614,10 +625,29 @@ body {
   gap: 32px;
 }
 
+.order-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
 .checkout-header {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.order-detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 600px) {
+  .order-detail-actions {
+    flex-direction: row;
+    align-items: center;
+  }
 }
 
 .checkout-header .secondary-button {
@@ -635,6 +665,17 @@ body {
 .checkout-layout {
   display: grid;
   gap: 24px;
+}
+
+.order-detail-meta {
+  border-radius: 24px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: #f8fafc;
+  padding: 24px;
+}
+
+.order-detail-meta .detail-value {
+  font-size: 15px;
 }
 
 @media (max-width: 767px) {
@@ -664,11 +705,6 @@ body {
 
   .form-row .primary-button {
     width: 100%;
-  }
-
-  .checkout-plan-hint {
-    font-size: 11px;
-    line-height: 1.7;
   }
 
   .checkout-form {
@@ -733,16 +769,6 @@ body {
 
 .checkout-plan-tutorial:hover {
   text-decoration: underline;
-}
-
-.checkout-plan-hint {
-  border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: rgba(226, 232, 240, 0.6);
-  padding: 16px 18px;
-  font-size: 12px;
-  line-height: 1.8;
-  color: #475569;
 }
 
 .checkout-form {
