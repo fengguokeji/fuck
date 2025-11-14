@@ -480,22 +480,16 @@ body {
 }
 
 .payment-panel {
-  display: grid;
-  gap: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   width: 100%;
+  min-height: 320px;
+  padding: 24px 0;
 }
 
 .payment-panel > * {
   min-width: 0;
-}
-
-@media (min-width: 900px) {
-  .payment-panel {
-    grid-template-columns: minmax(300px, 360px) minmax(420px, 560px);
-    justify-content: center;
-    align-items: stretch;
-    column-gap: 40px;
-  }
 }
 
 .qr-box {
@@ -615,12 +609,6 @@ body {
   text-align: center;
 }
 
-@media (min-width: 900px) {
-  .payment-panel .qr-box {
-    justify-self: center;
-  }
-
-}
 
 .checkout-header .secondary-button {
   align-self: flex-start;
