@@ -65,9 +65,32 @@ const IS_SUPABASE_CONNECTION = Boolean(
     process.env.POSTGRES_HOST?.includes('supabase')
 );
 
+function createPoolConfigFromConnectionString(connectionString: string): PoolConfig {
+  try {
+    const url = new URL(connectionString);
+    const config: PoolConfig = {
+      host: url.hostname,
+      port: url.port ? Number(url.port) : undefined,
+      user: url.username ? decodeURIComponent(url.username) : undefined,
+      password: url.password ? decodeURIComponent(url.password) : undefined,
+      database: url.pathname ? decodeURIComponent(url.pathname.replace(/^\//, '')) : undefined,
+    };
+    // 兼容以 "postgresql:" 为协议头的连接串。
+    config.port ??= 5432;
+    // `sslmode=require` 等参数不会自动注入 `ssl` 选项，因此额外标记，后续可以覆盖 rejectUnauthorized。
+    const sslMode = url.searchParams.get('sslmode');
+    if (sslMode && sslMode !== 'disable') {
+      config.ssl = true;
+    }
+    return config;
+  } catch {
+    return { connectionString } satisfies PoolConfig;
+  }
+}
+
 const PG_POOL_CONFIG: PoolConfig | null = (() => {
   if (POSTGRES_CONNECTION_STRING) {
-    return { connectionString: POSTGRES_CONNECTION_STRING } satisfies PoolConfig;
+    return createPoolConfigFromConnectionString(POSTGRES_CONNECTION_STRING);
   }
   if (process.env.POSTGRES_HOST && process.env.POSTGRES_DATABASE) {
     return {
