@@ -88,7 +88,11 @@ export default function OrdersPage() {
               required
             />
           </div>
-          <button type="submit" disabled={loading || !email} className="secondary-button">
+          <button
+            type="submit"
+            disabled={loading || !email}
+            className="primary-button tutorial-cta-button"
+          >
             {loading ? '查询中…' : '查询订单'}
           </button>
         </form>
