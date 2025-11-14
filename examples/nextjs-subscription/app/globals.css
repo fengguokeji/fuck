@@ -583,24 +583,17 @@ body {
 }
 
 .tutorial-cta-button {
-  width: 100%;
-  margin-top: 4px;
-  gap: 10px;
-  font-size: 15px;
-  letter-spacing: 0.04em;
-  box-shadow: 0 24px 55px rgba(37, 99, 235, 0.32);
+  gap: 6px;
+  padding: 12px 22px;
+  border-radius: 14px;
+  font-size: 14px;
+  letter-spacing: normal;
+  box-shadow: none;
 }
 
 .tutorial-cta-button::after {
   content: '↗';
-  font-size: 18px;
-}
-
-@media (min-width: 520px) {
-  .tutorial-cta-button {
-    width: auto;
-    justify-self: flex-start;
-  }
+  font-size: 16px;
 }
 
 .checkout-card {
@@ -629,6 +622,13 @@ body {
   .order-detail-actions {
     flex-direction: row;
     align-items: center;
+  }
+}
+
+@media (max-width: 599px) {
+  .order-detail-actions .secondary-button,
+  .order-detail-actions .tutorial-cta-button {
+    width: 100%;
   }
 }
 
