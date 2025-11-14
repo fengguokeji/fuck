@@ -564,6 +564,14 @@ body {
   color: #94a3b8;
 }
 
+.detail-label-highlight {
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0.06em;
+  color: #0f172a;
+}
+
 .detail-value {
   font-size: 16px;
   font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
@@ -573,13 +581,24 @@ body {
   overflow-wrap: anywhere;
 }
 
-.tutorial-link {
-  color: #2563eb;
-  text-decoration: none;
+.tutorial-callout {
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(191, 219, 254, 0.8);
+  background: linear-gradient(135deg, rgba(219, 234, 254, 0.6), rgba(191, 219, 254, 0.4));
+  gap: 12px;
 }
 
-.tutorial-link:hover {
-  text-decoration: underline;
+.tutorial-button {
+  width: 100%;
+  max-width: 280px;
+  font-size: 14px;
+}
+
+@media (min-width: 480px) {
+  .tutorial-button {
+    width: auto;
+  }
 }
 
 .checkout-card {
@@ -848,14 +867,10 @@ body {
   color: #475569;
 }
 
-.history-link {
-  color: #2563eb;
+.history-button {
+  width: fit-content;
   font-size: 13px;
-  text-decoration: none;
-}
-
-.history-link:hover {
-  text-decoration: underline;
+  padding: 10px 18px;
 }
 
 .page-footer {
