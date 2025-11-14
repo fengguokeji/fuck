@@ -50,9 +50,6 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
               查看使用教程
             </a>
           </div>
-          <div className="checkout-plan-hint">
-            支持使用同一联系邮箱多次下单，我们会自动保留历史订单，您可在订单查询页面随时查阅二维码与教学链接。
-          </div>
         </div>
         <CheckoutForm plan={plan} />
       </div>
