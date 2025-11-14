@@ -52,10 +52,6 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
               : '打开支付宝扫描二维码完成支付，系统会在成功后自动刷新订单状态。'}
           </p>
         </div>
-        <div className="order-details">
-          <span className="detail-label">订单编号</span>
-          <span className="detail-value">{order.id}</span>
-        </div>
       </div>
     </section>
   );

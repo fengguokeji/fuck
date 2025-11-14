@@ -547,37 +547,6 @@ body {
   color: #475569;
 }
 
-.order-details {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 14px;
-  color: #334155;
-}
-
-.detail-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: #94a3b8;
-}
-
-.detail-label-highlight {
-  font-size: 16px;
-  font-weight: 700;
-  text-transform: none;
-  letter-spacing: 0.06em;
-  color: #0f172a;
-}
-
-.detail-value {
-  font-size: 16px;
-  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-    'Courier New', monospace;
-  color: #0f172a;
-  word-break: break-all;
-  overflow-wrap: anywhere;
-}
 
 .tutorial-cta-button {
   gap: 6px;
@@ -651,9 +620,6 @@ body {
     justify-self: center;
   }
 
-  .payment-panel .order-details {
-    max-width: 560px;
-  }
 }
 
 .checkout-header .secondary-button {
