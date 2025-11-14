@@ -22,9 +22,17 @@ body {
 
 .app-body {
   min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
   margin: 0;
   background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 60%, #e2e8f0 100%);
   color: inherit;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-body > .app-container {
+  flex: 1;
 }
 
 .app-container {
