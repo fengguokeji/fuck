@@ -473,6 +473,11 @@ body {
 .payment-panel {
   display: grid;
   gap: 28px;
+  width: 100%;
+}
+
+.payment-panel > * {
+  min-width: 0;
 }
 
 @media (min-width: 900px) {
@@ -490,8 +495,10 @@ body {
   border-radius: 20px;
   border: 1px solid rgba(226, 232, 240, 0.9);
   background: #f8fafc;
-  padding: 28px 24px;
+  padding: clamp(20px, 6vw, 28px) clamp(16px, 5vw, 24px);
   text-align: center;
+  width: min(100%, 340px);
+  margin: 0 auto;
 }
 
 .qr-label {
@@ -502,11 +509,13 @@ body {
 }
 
 .qr-image {
-  width: 220px;
-  height: 220px;
+  width: min(220px, 100%);
+  height: auto;
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
   border-radius: 18px;
   background: #ffffff;
-  padding: 16px;
+  padding: clamp(12px, 4vw, 16px);
   object-fit: contain;
 }
 
@@ -541,6 +550,8 @@ body {
   font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
     'Courier New', monospace;
   color: #0f172a;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .tutorial-link {
@@ -560,19 +571,31 @@ body {
   font-size: 12px;
   line-height: 1.8;
   color: #475569;
+  width: 100%;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 .notice-box--link {
   background: rgba(191, 219, 254, 0.35);
   border-color: rgba(148, 163, 184, 0.6);
-  display: inline-flex;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
   margin-top: 12px;
+  width: 100%;
+  text-align: center;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .notice-box--link a {
   color: #1d4ed8;
   font-weight: 600;
   text-decoration: none;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .notice-box--link a:hover {
