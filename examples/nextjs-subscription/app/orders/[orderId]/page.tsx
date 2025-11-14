@@ -53,10 +53,8 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           </p>
         </div>
         <div className="order-details">
-          <div className="detail-item">
-            <span className="detail-label">订单编号</span>
-            <span className="detail-value">{order.id}</span>
-          </div>
+          <span className="detail-label">订单编号</span>
+          <span className="detail-value">{order.id}</span>
         </div>
       </div>
     </section>
