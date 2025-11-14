@@ -795,6 +795,10 @@ body {
   }
 }
 
+.history-item-actions {
+  display: none;
+}
+
 .history-qr-box {
   display: flex;
   flex-direction: column;
@@ -851,6 +855,25 @@ body {
   width: fit-content;
   font-size: 13px;
   padding: 10px 18px;
+}
+
+@media (max-width: 767px) {
+  .history-item-actions {
+    display: flex;
+    margin-top: 4px;
+  }
+
+  .history-item-actions .history-button {
+    width: 100%;
+  }
+
+  .history-item-body {
+    margin-top: 10px;
+  }
+
+  .history-info {
+    display: none;
+  }
 }
 
 .page-footer {

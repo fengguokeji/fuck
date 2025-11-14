@@ -10,7 +10,6 @@ type OrderHistoryItem = {
   amount: number;
   currency: string;
   status: string;
-  tradeNo?: string;
   qrCode?: string;
   tutorialUrl: string;
   createdAt: string;
@@ -101,6 +100,16 @@ export default function OrdersPage() {
             {history.length === 0 && <p>暂无订单记录。</p>}
             {history.map((item) => {
               const planMeta = planMap.get(item.planId);
+              const renderTutorialButton = () => (
+                <a
+                  className="secondary-button history-button"
+                  href={item.tutorialUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  查看使用教程
+                </a>
+              );
               return (
                 <div key={item.id} className="history-item">
                   <div className="history-item-header">
@@ -108,11 +117,11 @@ export default function OrdersPage() {
                       <div className="history-title">{planMeta?.name ?? item.planId}</div>
                       <div className="history-meta">
                         <span>状态：{item.status === 'paid' ? '已支付' : '待支付'}</span>
-                        {item.tradeNo && <span>流水号：{item.tradeNo}</span>}
                         <span>下单时间：{formatDateTime(item.createdAt)}</span>
                       </div>
                     </div>
                   </div>
+                  <div className="history-item-actions">{renderTutorialButton()}</div>
                   <div className="history-item-body">
                     <div className="history-qr-box">
                       {item.qrCode ? (
@@ -124,16 +133,7 @@ export default function OrdersPage() {
                         <span>暂无二维码信息</span>
                       )}
                     </div>
-                    <div className="history-info">
-                      <a
-                        className="secondary-button history-button"
-                        href={item.tutorialUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        查看使用教程
-                      </a>
-                    </div>
+                    <div className="history-info">{renderTutorialButton()}</div>
                   </div>
                 </div>
               );
