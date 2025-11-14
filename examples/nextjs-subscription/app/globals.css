@@ -22,9 +22,17 @@ body {
 
 .app-body {
   min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
   margin: 0;
   background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 60%, #e2e8f0 100%);
   color: inherit;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-body > .app-container {
+  flex: 1;
 }
 
 .app-container {
@@ -473,6 +481,11 @@ body {
 .payment-panel {
   display: grid;
   gap: 28px;
+  width: 100%;
+}
+
+.payment-panel > * {
+  min-width: 0;
 }
 
 @media (min-width: 900px) {
@@ -490,8 +503,10 @@ body {
   border-radius: 20px;
   border: 1px solid rgba(226, 232, 240, 0.9);
   background: #f8fafc;
-  padding: 28px 24px;
+  padding: clamp(20px, 6vw, 28px) clamp(16px, 5vw, 24px);
   text-align: center;
+  width: min(100%, 340px);
+  margin: 0 auto;
 }
 
 .qr-label {
@@ -502,12 +517,25 @@ body {
 }
 
 .qr-image {
-  width: 220px;
-  height: 220px;
+  width: min(220px, 100%);
+  height: auto;
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
   border-radius: 18px;
   background: #ffffff;
-  padding: 16px;
+  padding: clamp(12px, 4vw, 16px);
   object-fit: contain;
+}
+
+.qr-missing {
+  width: 100%;
+  border-radius: 18px;
+  border: 1px dashed rgba(148, 163, 184, 0.6);
+  padding: 28px 18px;
+  font-size: 13px;
+  color: #475569;
+  background: rgba(148, 163, 184, 0.08);
+  text-align: center;
 }
 
 .qr-tip {
@@ -541,6 +569,8 @@ body {
   font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
     'Courier New', monospace;
   color: #0f172a;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .tutorial-link {
@@ -552,41 +582,33 @@ body {
   text-decoration: underline;
 }
 
-.notice-box {
-  border-radius: 18px;
-  border: 1px solid rgba(203, 213, 225, 0.8);
-  background: #f1f5f9;
-  padding: 18px;
-  font-size: 12px;
-  line-height: 1.8;
-  color: #475569;
-}
-
-.notice-box--link {
-  background: rgba(191, 219, 254, 0.35);
-  border-color: rgba(148, 163, 184, 0.6);
-  display: inline-flex;
-  margin-top: 12px;
-}
-
-.notice-box--link a {
-  color: #1d4ed8;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.notice-box--link a:hover {
-  text-decoration: underline;
-}
-
 .checkout-card {
   gap: 32px;
+}
+
+.order-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
 }
 
 .checkout-header {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.order-detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 600px) {
+  .order-detail-actions {
+    flex-direction: row;
+    align-items: center;
+  }
 }
 
 .checkout-header .secondary-button {
@@ -633,11 +655,6 @@ body {
 
   .form-row .primary-button {
     width: 100%;
-  }
-
-  .checkout-plan-hint {
-    font-size: 11px;
-    line-height: 1.7;
   }
 
   .checkout-form {
@@ -702,16 +719,6 @@ body {
 
 .checkout-plan-tutorial:hover {
   text-decoration: underline;
-}
-
-.checkout-plan-hint {
-  border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: rgba(226, 232, 240, 0.6);
-  padding: 16px 18px;
-  font-size: 12px;
-  line-height: 1.8;
-  color: #475569;
 }
 
 .checkout-form {

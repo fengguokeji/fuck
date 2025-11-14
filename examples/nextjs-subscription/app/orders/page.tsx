@@ -132,6 +132,9 @@ export default function OrdersPage() {
                       <a className="history-link" href={item.tutorialUrl} target="_blank" rel="noreferrer">
                         查看使用教程
                       </a>
+                      <Link className="history-link" href={`/orders/${item.id}`}>
+                        查看订单详情
+                      </Link>
                     </div>
                   </div>
                 </div>

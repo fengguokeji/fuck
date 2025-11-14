@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 import type { SubscriptionPlan } from '../../lib/plans';
 
@@ -19,9 +19,9 @@ type CheckoutFormProps = {
 
 export default function CheckoutForm({ plan }: CheckoutFormProps) {
   const [email, setEmail] = useState('');
-  const [order, setOrder] = useState<CreateOrderResponse | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   async function submitOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -29,7 +29,6 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
       return;
     }
     setError(null);
-    setOrder(null);
     setCreating(true);
     try {
       const normalizedEmail = email.trim();
@@ -46,7 +45,8 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
       if (!res.ok) {
         throw new Error(data.error ?? '无法创建订单');
       }
-      setOrder(data);
+      const detailUrl = `/orders/${data.orderId}?email=${encodeURIComponent(normalizedEmail)}`;
+      router.push(detailUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : '未知错误');
     } finally {
@@ -91,43 +91,6 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
 
       {error && <div className="alert-error">{error}</div>}
 
-      {order && (
-        <div className="payment-panel">
-          <div className="qr-box">
-            <span className="qr-label">扫码支付</span>
-            <img src={order.qrCode} alt="支付宝二维码" className="qr-image" />
-            <p className="qr-tip">
-              {order.gateway === 'mock'
-                ? '当前处于模拟模式，二维码仅用于演示，订单会自动标记为已支付。'
-                : '使用支付宝扫描二维码完成支付，支付成功后系统会立即同步订单状态。'}
-            </p>
-          </div>
-          <div className="order-details">
-            <div className="detail-item">
-              <span className="detail-label">订单编号</span>
-              <span className="detail-value">{order.orderId}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">支付状态</span>
-              <span className="detail-value" style={{ color: order.status === 'paid' ? '#4ade80' : '#facc15' }}>
-                {order.status === 'paid' ? '已支付' : '待支付'}
-              </span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">教学指引</span>
-              <a className="tutorial-link" href={order.tutorialUrl} target="_blank" rel="noreferrer">
-                查看使用教程
-              </a>
-            </div>
-            <div className="notice-box">
-              支付完成后，可通过右上角「订单查询」入口，使用邮箱 {email || 'you@example.com'} 重新获取二维码与使用教程。
-            </div>
-            <div className="notice-box notice-box--link">
-              <Link href="/orders">前往订单查询页面</Link>
-            </div>
-          </div>
-        </div>
-      )}
     </form>
   );
 }
