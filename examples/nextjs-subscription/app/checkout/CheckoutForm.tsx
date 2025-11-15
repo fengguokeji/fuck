@@ -12,6 +12,7 @@ type CreateOrderResponse = {
   status: string;
   gateway: 'alipay' | 'mock';
   tutorialUrl: string;
+  paymentUrl?: string | null;
 };
 
 type CheckoutFormProps = {
@@ -28,6 +29,7 @@ type OrderStatusResponse = {
   tradeNo: string | null;
   tutorialUrl: string;
   updatedAt: string;
+  paymentUrl?: string | null;
 };
 
 export default function CheckoutForm({ plan }: CheckoutFormProps) {
@@ -40,8 +42,14 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
   const [statusError, setStatusError] = useState<string | null>(null);
   const [isMobileClient, setIsMobileClient] = useState(false);
   const router = useRouter();
-  const schemeInvokedRef = useRef(false);
+  const paymentInvokeRef = useRef(false);
   const desktopRedirectRef = useRef(false);
+  const desktopPaymentTarget =
+    activeOrder?.paymentUrl ??
+    (activeOrder?.gateway === 'alipay'
+      ? activeOrder?.qrCode
+      : (activeOrder?.qrImage ?? null)) ??
+    null;
 
   useEffect(() => {
     if (typeof navigator === 'undefined') {
@@ -79,6 +87,7 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
             qrCode: payload.qrCode ?? prev.qrCode,
             qrImage: payload.qrImage ?? prev.qrImage,
             tradeNo: payload.tradeNo ?? prev.tradeNo,
+            paymentUrl: payload.paymentUrl ?? prev.paymentUrl,
           };
         });
         if (payload.status === 'paid') {
@@ -108,17 +117,18 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
   }, [activeOrder, refreshOrderStatus]);
 
   useEffect(() => {
-    if (
-      !activeOrder ||
-      activeOrder.gateway !== 'alipay' ||
-      !isMobileClient ||
-      !activeOrder.qrCode ||
-      schemeInvokedRef.current
-    ) {
+    if (!activeOrder || !isMobileClient || activeOrder.status === 'paid' || paymentInvokeRef.current) {
       return;
     }
-    schemeInvokedRef.current = true;
-    openAlipayClient(activeOrder.qrCode);
+    if (activeOrder.paymentUrl) {
+      paymentInvokeRef.current = true;
+      window.location.href = activeOrder.paymentUrl;
+      return;
+    }
+    if (activeOrder.gateway === 'alipay' && activeOrder.qrCode) {
+      paymentInvokeRef.current = true;
+      openAlipayClient(activeOrder.qrCode);
+    }
   }, [activeOrder, isMobileClient, openAlipayClient]);
 
   const openDesktopPaymentPage = useCallback((targetUrl?: string | null) => {
@@ -132,16 +142,15 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
   }, []);
 
   useEffect(() => {
-    if (!activeOrder || isMobileClient) {
+    if (!activeOrder || isMobileClient || activeOrder.status === 'paid' || !desktopPaymentTarget) {
       return;
     }
-    const targetUrl = activeOrder.gateway === 'alipay' ? activeOrder.qrCode : activeOrder.qrImage;
-    if (!targetUrl || desktopRedirectRef.current) {
+    if (desktopRedirectRef.current) {
       return;
     }
     desktopRedirectRef.current = true;
-    openDesktopPaymentPage(targetUrl);
-  }, [activeOrder, isMobileClient, openDesktopPaymentPage]);
+    openDesktopPaymentPage(desktopPaymentTarget);
+  }, [activeOrder, desktopPaymentTarget, isMobileClient, openDesktopPaymentPage]);
 
   async function submitOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -169,10 +178,10 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
         throw new Error(data.error ?? '无法创建订单');
       }
       setDebugLog(null);
-      schemeInvokedRef.current = false;
+      paymentInvokeRef.current = false;
       desktopRedirectRef.current = false;
       setStatusError(null);
-      setActiveOrder({ ...data, email: normalizedEmail });
+      setActiveOrder({ ...data, paymentUrl: data.paymentUrl ?? null, email: normalizedEmail });
     } catch (err) {
       setError(err instanceof Error ? err.message : '未知错误');
     } finally {
@@ -199,8 +208,8 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
         <div className="section-header-text">
           <h2>填写信息并下单</h2>
           <p>
-            输入联系邮箱后即可创建支付宝预订单：桌面端会跳转到支付宝生成的扫码页面，移动端会唤起支付宝客
-            户端，支付完成后我们会自动跳转到订单详情。
+            输入联系邮箱后即可创建支付宝订单：桌面端会自动弹出支付宝网页收银台并提供备用二维码，移动端直接
+            跳转支付宝支付，完成后系统会自动同步订单状态。
           </p>
         </div>
         <div className="section-summary">
@@ -264,25 +273,35 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
                 <p>
                   {activeOrder.status === 'paid'
                     ? '系统已经同步到支付完成，可直接跳转查看订单详情。'
-                    : '系统已尝试唤起支付宝客户端，请在完成支付后返回此页面，我们会自动同步订单状态。'}
+                    : activeOrder.paymentUrl
+                      ? '系统已跳转到支付宝网页或 App，请在完成支付后返回此页面，我们会自动同步订单状态。'
+                      : '系统已尝试唤起支付宝客户端，请在完成支付后返回此页面，我们会自动同步订单状态。'}
                 </p>
-                {activeOrder.status !== 'paid' && (
+                {activeOrder.status !== 'paid' && (activeOrder.paymentUrl || (activeOrder.gateway === 'alipay' && activeOrder.qrCode)) && (
                   <button
                     type="button"
                     className="primary-button"
-                    onClick={() => activeOrder.gateway === 'alipay' && openAlipayClient(activeOrder.qrCode)}
+                    onClick={() => {
+                      if (activeOrder.paymentUrl) {
+                        window.location.href = activeOrder.paymentUrl;
+                        return;
+                      }
+                      if (activeOrder.gateway === 'alipay' && activeOrder.qrCode) {
+                        openAlipayClient(activeOrder.qrCode);
+                      }
+                    }}
                   >
-                    重新打开支付宝
+                    重新打开支付宝支付页
                   </button>
                 )}
               </div>
             ) : (
-              <div className="checkout-payment-desktop">
-                <p>
-                  {activeOrder.status === 'paid'
-                    ? '系统已同步到支付完成，将自动跳转到订单详情。'
-                    : '系统已在新窗口打开支付宝官方扫码页面，若未自动弹出可点击下方按钮重新打开。'}
-                </p>
+                <div className="checkout-payment-desktop">
+                  <p>
+                    {activeOrder.status === 'paid'
+                      ? '系统已同步到支付完成，将自动跳转到订单详情。'
+                      : '系统已在新窗口打开支付宝网页收银台，若浏览器阻止弹窗可点击下方按钮重新打开。'}
+                  </p>
                 <div className="qr-box">
                   <span className="qr-label">{activeOrder.status === 'paid' ? '支付完成' : '扫码支付'}</span>
                   {activeOrder.qrImage ? (
@@ -300,17 +319,13 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
                       : '若支付宝页面无法显示，可直接使用下方二维码作为备用方式。'}
                   </p>
                 </div>
-                {activeOrder.status !== 'paid' && (
+                {activeOrder.status !== 'paid' && desktopPaymentTarget && (
                   <button
                     type="button"
                     className="primary-button"
-                    onClick={() =>
-                      openDesktopPaymentPage(
-                        activeOrder.gateway === 'alipay' ? activeOrder.qrCode : activeOrder.qrImage,
-                      )
-                    }
+                    onClick={() => openDesktopPaymentPage(desktopPaymentTarget)}
                   >
-                    打开支付宝扫码页
+                    打开支付宝支付页
                   </button>
                 )}
               </div>

@@ -1,14 +1,14 @@
 # Next.js + 支付宝订阅示例
 
-本示例展示如何使用 [Next.js](https://nextjs.org/)、[Vercel Postgres](https://vercel.com/postgres) 以及本仓库提供的 [`alipay-sdk`](https://www.npmjs.com/package/alipay-sdk) 搭建一套可直接部署到 Vercel 的订阅购买站点。示例涵盖创建支付宝预订单、展示扫码支付二维码、处理支付宝异步通知，以及让用户通过邮箱查询历史订单的完整流程。
+本示例展示如何使用 [Next.js](https://nextjs.org/)、[Vercel Postgres](https://vercel.com/postgres) 以及本仓库提供的 [`alipay-sdk`](https://www.npmjs.com/package/alipay-sdk) 搭建一套可直接部署到 Vercel 的订阅购买站点。示例涵盖创建支付宝订单、生成网页收银台链接与备用扫码二维码、处理支付宝异步通知，以及让用户通过邮箱查询历史订单的完整流程。
 
 > **提示**：如果尚未准备支付宝密钥或数据库连接，本示例会自动进入模拟模式与内存存储模式，方便本地快速体验页面交互。
 
 ## 功能特性
 
 - 提供四档订阅套餐（¥20/月、¥80/半年、¥120/年、¥360/不限时），可自定义权益文案与教程链接。
-- 使用支付宝预创建接口生成二维码，支持桌面与移动扫码。
-- 下单后自动识别桌面/移动端：桌面自动跳转到支付宝生成的扫码页面并提供备用二维码，移动端直接尝试唤起支付宝客户端，支付完成后自动跳转订单详情。
+- 使用支付宝 `alipay.trade.page.pay` 接口生成网页收银台链接，并同步展示可扫码的备用二维码。
+- 下单后自动识别桌面/移动端：桌面自动打开支付宝网页收银台并提供备用二维码，移动端直接跳转/唤起支付宝客户端，支付完成后自动跳转订单详情。
 - 实现 `/api/alipay/notify` 异步通知端点，支付成功后自动更新订单状态。
 - 右上角提供订单查询入口，跳转到独立页面使用邮箱检索历史订单并直接获取二维码与使用教程。
 - 集成在线客服快捷入口，一键跳转到客服对话窗口。
@@ -74,21 +74,23 @@ examples/nextjs-subscription
    - 在 [支付宝开放平台](https://open.alipay.com/) 创建应用并获取以下信息：
      - `ALIPAY_APP_ID`
      - `ALIPAY_PRIVATE_KEY`
-     - `ALIPAY_ALIPAY_PUBLIC_KEY`（或证书路径：`ALIPAY_APP_CERT_PATH`、`ALIPAY_ALIPAY_PUBLIC_CERT_PATH`、`ALIPAY_ALIPAY_ROOT_CERT_PATH`）
+     - `ALIPAY_ALIPAY_PUBLIC_KEY`（或一次性提供证书：`ALIPAY_APP_CERT_PATH`、`ALIPAY_ALIPAY_PUBLIC_CERT_PATH`、`ALIPAY_ALIPAY_ROOT_CERT_PATH`）
    - 将异步通知地址设置为 `https://<你的 Vercel 域名>/api/alipay/notify`。
+   - 将 `ALIPAY_RETURN_URL` 配置为支付完成后支付宝需要跳回的页面（例如 `https://<你的 Vercel 域名>/orders`），便于用户在收银台成功支付后回到站点。
    - 若希望使用沙箱，可将 `ALIPAY_USE_SANDBOX` 设为 `true` 并配置沙箱密钥。
+   - 本示例直接使用官方的 [`alipay-sdk`](https://github.com/alipay/alipay-sdk-nodejs-all)，上述密钥或证书变量均可填写 PEM 内容或文件路径；当同时提供三份证书时会自动切换到证书模式。
 
 5. **设置站点展示信息（可选）**
    - 根据需求设置 `NEXT_PUBLIC_SITE_NAME` 与 `NEXT_PUBLIC_SUPPORT_EMAIL` 等变量，控制页面上显示的站点名称与支持邮箱。
 
 6. **触发部署**
    - 完成环境变量配置后点击 **Deploy**。
-   - 部署完成后访问 Vercel 分配的域名，即可使用真实的支付宝预下单与扫码支付流程。
+   - 部署完成后访问 Vercel 分配的域名，即可使用真实的支付宝网页收银台支付流程。
 
 ## 部署后验证
 
 1. 打开部署后的站点并填写邮箱，选择任意套餐创建订单。
-2. 若配置了真实密钥，桌面端会自动打开支付宝官方扫码页面（同时在站点内展示备用二维码），移动端会自动唤起支付宝客户端，支付完成后页面会自动跳转到订单详情。
+2. 若配置了真实密钥，桌面端会自动打开支付宝网页收银台（同时在站点内展示备用二维码），移动端会跳转/唤起支付宝客户端完成支付，随后页面会自动跳转到订单详情。
 3. 通过右上角“订单查询”按钮跳转到查询页，输入下单邮箱即可再次获取二维码与教程链接。
 4. 若未配置密钥，二维码来自模拟模式，订单会立即标记为已支付，可用于联调前端流程。
 
@@ -100,7 +102,7 @@ examples/nextjs-subscription
 
 ## 实时订单查询接口
 
-- `GET /api/orders/[orderId]?email=<下单邮箱>`：校验邮箱后返回订单当前状态、二维码原始内容与渲染后的图片地址及最新更新时间，供前端轮询。下单页会调用该接口以判断是否需要刷新二维码或跳转详情页。
+- `GET /api/orders/[orderId]?email=<下单邮箱>`：校验邮箱后返回订单当前状态、支付链接（`paymentUrl`）、二维码原始内容与渲染后的图片地址及最新更新时间，供前端轮询。下单页会调用该接口以判断是否需要刷新二维码或跳转详情页。
 
 ## 环境变量速查
 
@@ -109,11 +111,15 @@ examples/nextjs-subscription
 | 变量 | 说明 |
 | --- | --- |
 | `ALIPAY_APP_ID` | 支付宝开放平台应用 App ID（生产或沙箱）。|
-| `ALIPAY_PRIVATE_KEY` | 应用私钥，需为 PKCS8 格式。|
-| `ALIPAY_ALIPAY_PUBLIC_KEY` | 支付宝公钥（或改用证书配置）。|
+| `ALIPAY_PRIVATE_KEY` | 应用私钥，需为 PKCS8 格式，可直接填写 PEM 内容或指向 PEM 文件的路径。|
+| `ALIPAY_ALIPAY_PUBLIC_KEY` | 支付宝公钥（或改用证书配置），同样支持填写 PEM 内容或路径。|
+| `ALIPAY_APP_CERT_PATH` | 应用公钥证书内容或路径。若与以下两项同时提供，则自动切换到证书模式。|
+| `ALIPAY_ALIPAY_PUBLIC_CERT_PATH` | 支付宝公钥证书内容或路径；在证书模式下必填，也可在公钥模式下用来自动提取支付宝公钥。|
+| `ALIPAY_ALIPAY_ROOT_CERT_PATH` | 支付宝根证书内容或路径，证书模式必填。|
 | `ALIPAY_FORCE_MOCK` | 设为 `true` 时强制使用示例内置的模拟网关，即使同时提供了真实密钥，也不会向支付宝发起请求。|
 | `ORDERS_FORCE_MEMORY` | 设为 `true` 时跳过 Postgres，转而使用内存存储，适合本地演示或尚未准备数据库的场景。|
 | `ALIPAY_NOTIFY_URL` | 支付宝服务端通知回调地址；部署到 Vercel 后可留空，由应用自动推导。|
+| `ALIPAY_RETURN_URL` | 支付完成后支付宝同步跳转的地址，推荐填写部署域名下的订单查询页。|
 | `ALIPAY_USE_SANDBOX` | `true` 时使用沙箱网关，适合调试。|
 | `POSTGRES_URL` 等 | Vercel Postgres 或 Supabase Postgres 连接信息，详见上文。|
 | `SUPABASE_URL` 等 | 使用 Vercel × Supabase 集成时提供的变量，绑定后示例会自动启用兼容 Supabase 的数据库驱动。|
