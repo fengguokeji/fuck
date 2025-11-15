@@ -109,8 +109,8 @@ examples/nextjs-subscription
 | 变量 | 说明 |
 | --- | --- |
 | `ALIPAY_APP_ID` | 支付宝开放平台应用 App ID（生产或沙箱）。|
-| `ALIPAY_PRIVATE_KEY` | 应用私钥，需为 PKCS8 格式。|
-| `ALIPAY_ALIPAY_PUBLIC_KEY` | 支付宝公钥（或改用证书配置）。|
+| `ALIPAY_PRIVATE_KEY` | 应用私钥，需为 PKCS8 格式，可直接填写 PEM 内容或指向 PEM 文件的路径。|
+| `ALIPAY_ALIPAY_PUBLIC_KEY` | 支付宝公钥（或改用证书配置），同样支持填写 PEM 内容或路径。|
 | `ALIPAY_FORCE_MOCK` | 设为 `true` 时强制使用示例内置的模拟网关，即使同时提供了真实密钥，也不会向支付宝发起请求。|
 | `ORDERS_FORCE_MEMORY` | 设为 `true` 时跳过 Postgres，转而使用内存存储，适合本地演示或尚未准备数据库的场景。|
 | `ALIPAY_NOTIFY_URL` | 支付宝服务端通知回调地址；部署到 Vercel 后可留空，由应用自动推导。|

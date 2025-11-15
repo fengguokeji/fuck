@@ -276,8 +276,16 @@ function readFileIfPresent(path?: string) {
   }
 }
 
+function readKeyMaterial(name: string) {
+  const value = readEnv(name);
+  if (!value) {
+    return undefined;
+  }
+  return readFileIfPresent(value) ?? value;
+}
+
 function resolveAlipayPublicKey() {
-  const direct = readEnv('ALIPAY_ALIPAY_PUBLIC_KEY');
+  const direct = readKeyMaterial('ALIPAY_ALIPAY_PUBLIC_KEY');
   if (direct) {
     return direct;
   }
@@ -303,7 +311,7 @@ function shouldForceMockGateway() {
 
 function hasAlipayKeyMaterial() {
   const appId = readEnv('ALIPAY_APP_ID');
-  const privateKey = readEnv('ALIPAY_PRIVATE_KEY');
+  const privateKey = readKeyMaterial('ALIPAY_PRIVATE_KEY');
   const publicKey = resolveAlipayPublicKey();
   return Boolean(appId && privateKey && publicKey);
 }
@@ -327,7 +335,7 @@ function getClient(): LegacyAlipayClient | null {
   }
   if (!alipayClient) {
     const appId = readEnv('ALIPAY_APP_ID')!;
-    const privateKey = readEnv('ALIPAY_PRIVATE_KEY')!;
+    const privateKey = readKeyMaterial('ALIPAY_PRIVATE_KEY')!;
     const publicKey = resolveAlipayPublicKey()!;
     alipayClient = new LegacyAlipayClient({
       appId,
