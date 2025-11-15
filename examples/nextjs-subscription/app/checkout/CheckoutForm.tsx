@@ -34,6 +34,7 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
     setDebugLog(null);
     setCopied(false);
     setCreating(true);
+    setOrderResult(null);
     try {
       const normalizedEmail = email.trim();
       if (!normalizedEmail) {

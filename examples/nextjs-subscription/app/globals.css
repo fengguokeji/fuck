@@ -614,6 +614,65 @@ body {
   gap: 32px;
 }
 
+.checkout-payment-card {
+  margin-top: 32px;
+  border-radius: 28px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #ffffff;
+  box-shadow: 0 25px 60px rgba(15, 23, 42, 0.08);
+  padding: clamp(20px, 6vw, 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.checkout-payment-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.checkout-payment-card-header h3 {
+  margin: 4px 0 6px;
+  font-size: clamp(18px, 4vw, 22px);
+}
+
+.payment-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+}
+
+.payment-hint {
+  margin: 0;
+  font-size: 14px;
+  color: #475569;
+}
+
+.checkout-payment-card .secondary-button {
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .checkout-payment-card-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .checkout-payment-card .secondary-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 .order-detail-card {
   display: flex;
   flex-direction: column;

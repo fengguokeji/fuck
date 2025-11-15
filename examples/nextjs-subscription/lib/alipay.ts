@@ -248,6 +248,12 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
     amount: order.amount,
     useSandbox: process.env.ALIPAY_USE_SANDBOX === 'true',
   });
+  logger.log('支付宝原始响应', payload);
+
+  const objectGraph = collectObjectGraph(payload);
+
+  const tradeNo = pickFirstString(objectGraph, ['tradeNo', 'trade_no']);
+  const qrCode = pickFirstString(objectGraph, ['qrCode', 'qr_code']);
 
   const requestBody: PrecreateRequestBody = {
     out_trade_no: order.id,
@@ -267,6 +273,9 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
       payload: v3Result.value.payload,
     };
   }
+}
+
+  logger.log('预订单创建成功', { tradeNo, qrCode });
 
   logger.log('V3 接口未返回二维码，准备降级调用 gateway.do 接口');
 
