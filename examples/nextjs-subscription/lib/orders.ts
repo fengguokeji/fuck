@@ -4,6 +4,7 @@ import { getPlanQrPayload } from './server/plan-secrets';
 import type { OrderRecord, OrderStatus } from './db';
 import { saveOrder, updateOrder, findOrdersByEmail, findOrderById } from './db';
 import { createPreOrder, isMockMode } from './alipay';
+import { buildQrImageUrl } from './qr';
 
 export type CreateOrderInput = {
   email: string;
@@ -14,6 +15,7 @@ export type CreateOrderResponse = {
   order: OrderRecord;
   tradeNo: string;
   qrCode: string;
+  qrImage: string;
   gateway: 'alipay' | 'mock';
 };
 
@@ -38,15 +40,12 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
 
   const preOrder = await createPreOrder(order);
 
-  const qrContentOverride = getPlanQrPayload(plan.id);
-  const overrideQrCodeUrl = qrContentOverride
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(
-        qrContentOverride,
-      )}`
-    : undefined;
+  const qrContentOverride = isMockMode() ? getPlanQrPayload(plan.id) : undefined;
+  const resolvedQrContent = qrContentOverride ?? preOrder.qrCode;
+  const qrImage = resolvedQrContent ? buildQrImageUrl(resolvedQrContent) : '';
 
   order.tradeNo = preOrder.tradeNo;
-  order.qrCode = overrideQrCodeUrl ?? preOrder.qrCode;
+  order.qrCode = resolvedQrContent;
   order.gatewayPayload = preOrder.payload;
 
   if (isMockMode()) {
@@ -59,6 +58,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     order,
     tradeNo: preOrder.tradeNo,
     qrCode: order.qrCode!,
+    qrImage,
     gateway: preOrder.gateway,
   };
 }

@@ -247,7 +247,7 @@ function buildMockPreOrder(order: OrderRecord): PreOrderResult {
   const qrContent = `MOCK_PAYMENT://${order.id}`;
   return {
     tradeNo: `MOCK-${randomUUID()}`,
-    qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(qrContent)}`,
+    qrCode: qrContent,
     gateway: 'mock',
     payload: {
       qrContent,

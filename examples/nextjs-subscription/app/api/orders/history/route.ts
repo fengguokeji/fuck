@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getOrders } from '../../../../lib/orders';
+import { buildQrImageUrl } from '../../../../lib/qr';
 
 export const runtime = 'nodejs';
 
@@ -22,6 +23,7 @@ export async function GET(request: Request) {
       status: order.status,
       tradeNo: order.tradeNo,
       qrCode: order.qrCode,
+      qrImage: order.qrCode ? buildQrImageUrl(order.qrCode) : null,
       tutorialUrl: order.tutorialUrl,
       createdAt: order.createdAt.toISOString(),
       updatedAt: order.updatedAt.toISOString(),

@@ -17,6 +17,7 @@ type OrderStatusResponse = {
   id: string;
   status: OrderStatus;
   qrCode: string | null;
+  qrImage: string | null;
   tradeNo: string | null;
   tutorialUrl: string;
   updatedAt: string;
@@ -78,8 +79,8 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
       <div className="payment-panel">
         <div className="qr-box">
           <span className="qr-label">{isPaid ? '支付完成' : '扫码支付'}</span>
-          {order.qrCode ? (
-            <img src={order.qrCode} alt={`订单 ${order.id} 的支付二维码`} className="qr-image" />
+          {order.qrImage ? (
+            <img src={order.qrImage} alt={`订单 ${order.id} 的支付二维码`} className="qr-image" />
           ) : (
             <div className="qr-missing">暂未生成二维码，请稍后刷新页面。</div>
           )}

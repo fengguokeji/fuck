@@ -8,6 +8,7 @@ type CreateOrderResponse = {
   orderId: string;
   tradeNo: string;
   qrCode: string;
+  qrImage: string;
   status: string;
   gateway: 'alipay' | 'mock';
   tutorialUrl: string;
@@ -23,6 +24,7 @@ type OrderStatusResponse = {
   id: string;
   status: string;
   qrCode: string | null;
+  qrImage: string | null;
   tradeNo: string | null;
   tutorialUrl: string;
   updatedAt: string;
@@ -39,6 +41,7 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
   const [isMobileClient, setIsMobileClient] = useState(false);
   const router = useRouter();
   const schemeInvokedRef = useRef(false);
+  const desktopRedirectRef = useRef(false);
 
   useEffect(() => {
     if (typeof navigator === 'undefined') {
@@ -74,6 +77,7 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
             ...prev,
             status: payload.status,
             qrCode: payload.qrCode ?? prev.qrCode,
+            qrImage: payload.qrImage ?? prev.qrImage,
             tradeNo: payload.tradeNo ?? prev.tradeNo,
           };
         });
@@ -104,12 +108,40 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
   }, [activeOrder, refreshOrderStatus]);
 
   useEffect(() => {
-    if (!activeOrder || !isMobileClient || !activeOrder.qrCode || schemeInvokedRef.current) {
+    if (
+      !activeOrder ||
+      activeOrder.gateway !== 'alipay' ||
+      !isMobileClient ||
+      !activeOrder.qrCode ||
+      schemeInvokedRef.current
+    ) {
       return;
     }
     schemeInvokedRef.current = true;
     openAlipayClient(activeOrder.qrCode);
   }, [activeOrder, isMobileClient, openAlipayClient]);
+
+  const openDesktopPaymentPage = useCallback((targetUrl?: string | null) => {
+    if (!targetUrl) {
+      return;
+    }
+    const popup = window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    if (!popup) {
+      window.location.href = targetUrl;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!activeOrder || isMobileClient) {
+      return;
+    }
+    const targetUrl = activeOrder.gateway === 'alipay' ? activeOrder.qrCode : activeOrder.qrImage;
+    if (!targetUrl || desktopRedirectRef.current) {
+      return;
+    }
+    desktopRedirectRef.current = true;
+    openDesktopPaymentPage(targetUrl);
+  }, [activeOrder, isMobileClient, openDesktopPaymentPage]);
 
   async function submitOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -138,6 +170,7 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
       }
       setDebugLog(null);
       schemeInvokedRef.current = false;
+      desktopRedirectRef.current = false;
       setStatusError(null);
       setActiveOrder({ ...data, email: normalizedEmail });
     } catch (err) {
@@ -166,7 +199,8 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
         <div className="section-header-text">
           <h2>填写信息并下单</h2>
           <p>
-            输入联系邮箱后即可创建支付宝预订单，系统会生成扫码支付二维码并在支付后自动更新订单状态。
+            输入联系邮箱后即可创建支付宝预订单：桌面端会跳转到支付宝生成的扫码页面，移动端会唤起支付宝客
+            户端，支付完成后我们会自动跳转到订单详情。
           </p>
         </div>
         <div className="section-summary">
@@ -236,29 +270,49 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
                   <button
                     type="button"
                     className="primary-button"
-                    onClick={() => activeOrder.qrCode && openAlipayClient(activeOrder.qrCode)}
+                    onClick={() => activeOrder.gateway === 'alipay' && openAlipayClient(activeOrder.qrCode)}
                   >
                     重新打开支付宝
                   </button>
                 )}
               </div>
             ) : (
-              <div className="qr-box">
-                <span className="qr-label">{activeOrder.status === 'paid' ? '支付完成' : '扫码支付'}</span>
-                {activeOrder.qrCode ? (
-                  <img
-                    src={activeOrder.qrCode}
-                    alt={`订单 ${activeOrder.orderId} 的支付二维码`}
-                    className="qr-image"
-                  />
-                ) : (
-                  <div className="qr-missing">暂未生成二维码，请稍后刷新页面。</div>
-                )}
-                <p className="qr-tip">
+              <div className="checkout-payment-desktop">
+                <p>
                   {activeOrder.status === 'paid'
-                    ? '检测到支付成功，即将跳转到详情页。'
-                    : '请使用支付宝扫描二维码完成支付，系统会定期刷新订单状态。'}
+                    ? '系统已同步到支付完成，将自动跳转到订单详情。'
+                    : '系统已在新窗口打开支付宝官方扫码页面，若未自动弹出可点击下方按钮重新打开。'}
                 </p>
+                <div className="qr-box">
+                  <span className="qr-label">{activeOrder.status === 'paid' ? '支付完成' : '扫码支付'}</span>
+                  {activeOrder.qrImage ? (
+                    <img
+                      src={activeOrder.qrImage}
+                      alt={`订单 ${activeOrder.orderId} 的支付二维码`}
+                      className="qr-image"
+                    />
+                  ) : (
+                    <div className="qr-missing">暂未生成二维码，请稍后刷新页面。</div>
+                  )}
+                  <p className="qr-tip">
+                    {activeOrder.status === 'paid'
+                      ? '检测到支付成功，即将跳转到详情页。'
+                      : '若支付宝页面无法显示，可直接使用下方二维码作为备用方式。'}
+                  </p>
+                </div>
+                {activeOrder.status !== 'paid' && (
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={() =>
+                      openDesktopPaymentPage(
+                        activeOrder.gateway === 'alipay' ? activeOrder.qrCode : activeOrder.qrImage,
+                      )
+                    }
+                  >
+                    打开支付宝扫码页
+                  </button>
+                )}
               </div>
             )}
 
