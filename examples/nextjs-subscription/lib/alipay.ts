@@ -21,12 +21,16 @@ const hasKeyMaterial = Boolean(
 const derivedNotifyUrl = process.env.ALIPAY_NOTIFY_URL ??
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}/api/alipay/notify` : undefined);
 
-function getEndpoint() {
+function getEndpointConfig() {
   const useSandbox = process.env.ALIPAY_USE_SANDBOX === 'true';
   if (useSandbox) {
-    return 'https://openapi.alipaydev.com';
+    const endpoint = 'https://openapi.alipaydev.com';
+    return {
+      endpoint,
+      gateway: `${endpoint}/gateway.do`,
+    };
   }
-  return undefined;
+  return null;
 }
 
 function getClient(): AlipaySdk | null {
@@ -34,6 +38,7 @@ function getClient(): AlipaySdk | null {
     return null;
   }
   if (!alipayClient) {
+    const endpointConfig = getEndpointConfig();
     alipayClient = new AlipaySdk({
       appId: process.env.ALIPAY_APP_ID!,
       privateKey: process.env.ALIPAY_PRIVATE_KEY!,
@@ -41,7 +46,7 @@ function getClient(): AlipaySdk | null {
       alipayRootCertPath: process.env.ALIPAY_ALIPAY_ROOT_CERT_PATH,
       alipayPublicCertPath: process.env.ALIPAY_ALIPAY_PUBLIC_CERT_PATH,
       appCertPath: process.env.ALIPAY_APP_CERT_PATH,
-      endpoint: getEndpoint(),
+      ...(endpointConfig ?? {}),
     });
   }
   return alipayClient;
