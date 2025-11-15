@@ -25,6 +25,7 @@ export async function POST(request: Request) {
       tradeNo: result.tradeNo,
       qrCode: result.qrCode,
       qrImage: result.qrImage,
+      paymentUrl: result.paymentUrl ?? null,
       status: result.order.status,
       gateway: result.gateway,
       tutorialUrl: result.order.tutorialUrl,

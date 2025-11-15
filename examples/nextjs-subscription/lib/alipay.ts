@@ -47,16 +47,16 @@ class DebugLogger {
 
 export type PreOrderResult = {
   tradeNo: string;
-  qrCode: string;
+  qrCode?: string;
+  paymentUrl?: string;
   gateway: 'alipay' | 'mock';
   payload: Record<string, unknown>;
 };
 
-type PrecreateRequestBody = {
+type PagePayRequestBody = {
   out_trade_no: string;
   total_amount: string;
   subject: string;
-  notify_url?: string;
   product_code: string;
 };
 
@@ -233,10 +233,10 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
     return buildMockPreOrder(order);
   }
 
-  const logger = new DebugLogger('alipay:precreate');
+  const logger = new DebugLogger('alipay:pagepay');
   const plan = findPlan(order.planId);
 
-  logger.log('准备创建支付宝预订单', {
+  logger.log('准备创建支付宝网页收银台链接', {
     orderId: order.id,
     planId: order.planId,
     amount: order.amount,
@@ -244,55 +244,46 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
   });
   logger.log('订单上下文', order);
 
-  const requestBody: PrecreateRequestBody = {
+  const requestBody: PagePayRequestBody = {
     out_trade_no: order.id,
     total_amount: order.amount.toFixed(2),
     subject: plan?.name ?? 'Subscription Plan',
-    notify_url: derivedNotifyUrl,
-    product_code: 'FACE_TO_FACE_PAYMENT',
+    product_code: 'FAST_INSTANT_TRADE_PAY',
   };
   logger.log('请求参数', requestBody);
 
   try {
-    const { notify_url, ...bizContent } = requestBody;
-    const execParams: Record<string, unknown> = { bizContent };
-    const notifyUrl = notify_url ?? client.defaultNotifyUrl;
+    const execParams: Record<string, unknown> = { bizContent: requestBody };
+    const notifyUrl = client.defaultNotifyUrl ?? derivedNotifyUrl;
     if (notifyUrl) {
       execParams.notifyUrl = notifyUrl;
     }
     if (client.defaultReturnUrl) {
       execParams.returnUrl = client.defaultReturnUrl;
     }
-    const result = await client.sdk.exec(
-      'alipay.trade.precreate',
-      execParams,
-    );
 
-    const code = result.code;
-    if (code !== '10000') {
-      const subMsg = result.subMsg ?? result.sub_msg ?? result.msg ?? 'UNKNOWN ERROR';
-      throw new Error(`支付宝返回错误: ${code ?? 'UNKNOWN'} - ${subMsg}`);
+    const paymentUrl = client.sdk.pageExecute('alipay.trade.page.pay', 'GET', execParams);
+
+    if (!paymentUrl) {
+      throw new Error('未能生成支付宝支付链接');
     }
 
-    const qrCode = (result.qrCode ?? result.qr_code) as string | undefined;
-    const tradeNo = (result.tradeNo ?? result.trade_no ?? order.id) as string | undefined;
-
-    if (!qrCode) {
-      throw new Error('支付宝返回数据缺少二维码');
-    }
-
-    logger.log('预订单创建成功', { tradeNo, qrCode });
+    logger.log('支付链接生成成功', { paymentUrl });
 
     return {
-      tradeNo: tradeNo ?? order.id,
-      qrCode,
+      tradeNo: order.id,
+      qrCode: paymentUrl,
+      paymentUrl,
       gateway: 'alipay',
-      payload: result,
+      payload: {
+        requestBody,
+        paymentUrl,
+      },
     } satisfies PreOrderResult;
   } catch (error) {
-    logger.log('调用支付宝预创建接口失败', serializeError(error));
+    logger.log('调用支付宝页面支付接口失败', serializeError(error));
     throw new GatewayError(
-      error instanceof Error ? error.message : 'Failed to create Alipay pre-order',
+      error instanceof Error ? error.message : 'Failed to create Alipay payment link',
       logger.toString(),
     );
   }

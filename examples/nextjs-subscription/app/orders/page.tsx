@@ -13,6 +13,7 @@ type OrderHistoryItem = {
   status: string;
   qrCode?: string;
   qrImage?: string | null;
+  paymentUrl?: string | null;
   tutorialUrl: string;
   createdAt: string;
   updatedAt: string;
@@ -138,6 +139,16 @@ export default function OrdersPage() {
                         </>
                       ) : (
                         <span>暂无二维码信息</span>
+                      )}
+                      {item.status !== 'paid' && item.paymentUrl && (
+                        <a
+                          className="primary-button history-button"
+                          href={item.paymentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          打开支付宝支付页
+                        </a>
                       )}
                     </div>
                     <div className="history-info">{renderTutorialButton()}</div>

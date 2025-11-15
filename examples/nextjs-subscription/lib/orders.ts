@@ -16,6 +16,7 @@ export type CreateOrderResponse = {
   tradeNo: string;
   qrCode: string;
   qrImage: string;
+  paymentUrl?: string | null;
   gateway: 'alipay' | 'mock';
 };
 
@@ -41,7 +42,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   const preOrder = await createPreOrder(order);
 
   const qrContentOverride = isMockMode() ? getPlanQrPayload(plan.id) : undefined;
-  const resolvedQrContent = qrContentOverride ?? preOrder.qrCode;
+  const resolvedQrContent = qrContentOverride ?? preOrder.qrCode ?? preOrder.paymentUrl ?? '';
   const qrImage = resolvedQrContent ? buildQrImageUrl(resolvedQrContent) : '';
 
   order.tradeNo = preOrder.tradeNo;
@@ -59,6 +60,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     tradeNo: preOrder.tradeNo,
     qrCode: order.qrCode!,
     qrImage,
+    paymentUrl: preOrder.paymentUrl ?? null,
     gateway: preOrder.gateway,
   };
 }
@@ -87,4 +89,15 @@ export async function getOrders(email: string) {
 
 export async function getOrder(orderId: string) {
   return findOrderById(orderId);
+}
+
+export function getStoredPaymentUrl(order: OrderRecord): string | null {
+  const payload = order.gatewayPayload as { paymentUrl?: unknown } | undefined;
+  if (payload && typeof payload.paymentUrl === 'string') {
+    return payload.paymentUrl;
+  }
+  if (order.qrCode && /^https?:/i.test(order.qrCode)) {
+    return order.qrCode;
+  }
+  return null;
 }

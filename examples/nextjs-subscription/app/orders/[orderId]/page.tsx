@@ -21,6 +21,7 @@ type OrderStatusResponse = {
   tradeNo: string | null;
   tutorialUrl: string;
   updatedAt: string;
+  paymentUrl: string | null;
 };
 
 async function fetchOrderDetail(orderId: string, email: string): Promise<OrderStatusResponse | null> {
@@ -87,8 +88,13 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
           <p className="qr-tip">
             {isPaid
               ? '订单已同步为已支付，您可以直接根据教学链接完成配置。'
-              : '打开支付宝扫描二维码完成支付，系统会在成功后自动刷新订单状态。'}
+              : '打开支付宝扫描二维码或点击下方按钮重新进入支付页，系统会在成功后自动刷新订单状态。'}
           </p>
+          {!isPaid && order.paymentUrl && (
+            <a className="primary-button" href={order.paymentUrl} target="_blank" rel="noreferrer">
+              重新打开支付宝支付页
+            </a>
+          )}
         </div>
         <dl className="order-metadata">
           <div>
