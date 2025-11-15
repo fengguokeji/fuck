@@ -56,6 +56,46 @@ export function isMockMode() {
   return !hasKeyMaterial;
 }
 
+type UnknownRecord = Record<string, unknown>;
+
+function collectObjectGraph(root: unknown): UnknownRecord[] {
+  const seen = new Set<object>();
+  const queue: unknown[] = [root];
+  const result: UnknownRecord[] = [];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current || typeof current !== 'object') {
+      continue;
+    }
+    if (seen.has(current as object)) {
+      continue;
+    }
+    seen.add(current as object);
+    const record = current as UnknownRecord;
+    result.push(record);
+    for (const value of Object.values(record)) {
+      if (typeof value === 'object' && value !== null) {
+        queue.push(value);
+      }
+    }
+  }
+
+  return result;
+}
+
+function pickFirstString(records: UnknownRecord[], keys: string[]): string | undefined {
+  for (const record of records) {
+    for (const key of keys) {
+      const value = record[key];
+      if (typeof value === 'string' && value.length > 0) {
+        return value;
+      }
+    }
+  }
+  return undefined;
+}
+
 export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult> {
   if (isMockMode()) {
     const qrContent = `MOCK_PAYMENT://${order.id}`;
@@ -85,20 +125,27 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
     },
   });
 
-  const payload = response.data as Record<string, any>;
+  const payload = response.data as UnknownRecord;
+  const objectGraph = collectObjectGraph(payload);
 
-  const tradeNo = [payload, payload?.data, payload?.result]
-    .map(item => (item?.tradeNo ?? item?.trade_no) as string | undefined)
-    .find(Boolean);
-  const qrCode = [payload, payload?.data, payload?.result]
-    .map(item => (item?.qrCode ?? item?.qr_code) as string | undefined)
-    .find(Boolean);
+  const tradeNo = pickFirstString(objectGraph, ['tradeNo', 'trade_no']);
+  const qrCode = pickFirstString(objectGraph, ['qrCode', 'qr_code']);
+
+  const errorCode = pickFirstString(objectGraph, ['code', 'subCode', 'sub_code']);
+  const errorMessage = pickFirstString(objectGraph, ['message', 'msg', 'sub_msg']);
+  const traceId = typeof response.traceId === 'string' ? response.traceId : undefined;
 
   const friendlyErrorMessage = (() => {
-    const code = payload?.code ?? payload?.data?.code ?? payload?.result?.code;
-    const message = payload?.message ?? payload?.msg ?? payload?.sub_msg;
-    if (code || message) {
-      return `Failed to create Alipay pre-order: ${[code, message].filter(Boolean).join(' - ')}`;
+    const details = [
+      response.responseHttpStatus && response.responseHttpStatus !== 200
+        ? `HTTP ${response.responseHttpStatus}`
+        : undefined,
+      errorCode,
+      errorMessage,
+      traceId ? `traceId: ${traceId}` : undefined,
+    ].filter(Boolean);
+    if (details.length > 0) {
+      return `Failed to create Alipay pre-order: ${details.join(' - ')}`;
     }
     return 'Failed to create Alipay pre-order';
   })();
