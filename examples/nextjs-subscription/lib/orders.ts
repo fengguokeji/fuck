@@ -1,8 +1,9 @@
 import { randomUUID } from 'crypto';
 import { findPlan } from './plans';
+import { getPlanQrPayload } from './server/plan-secrets';
 import type { OrderRecord, OrderStatus } from './db';
 import { saveOrder, updateOrder, findOrdersByEmail, findOrderById } from './db';
-import { createPreOrder } from './alipay';
+import { createPreOrder, isMockMode } from './alipay';
 import { buildQrImageUrl } from './qr';
 
 export type CreateOrderInput = {
@@ -15,7 +16,7 @@ export type CreateOrderResponse = {
   tradeNo: string;
   qrCode: string;
   qrImage: string;
-  gateway: 'alipay';
+  gateway: 'alipay' | 'mock';
 };
 
 export async function createOrder(input: CreateOrderInput): Promise<CreateOrderResponse> {
@@ -39,11 +40,17 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
 
   const preOrder = await createPreOrder(order);
 
-  const qrImage = preOrder.qrCode ? buildQrImageUrl(preOrder.qrCode) : '';
+  const qrContentOverride = isMockMode() ? getPlanQrPayload(plan.id) : undefined;
+  const resolvedQrContent = qrContentOverride ?? preOrder.qrCode;
+  const qrImage = resolvedQrContent ? buildQrImageUrl(resolvedQrContent) : '';
 
   order.tradeNo = preOrder.tradeNo;
-  order.qrCode = preOrder.qrCode;
+  order.qrCode = resolvedQrContent;
   order.gatewayPayload = preOrder.payload;
+
+  if (isMockMode()) {
+    order.status = 'paid';
+  }
 
   await saveOrder(order);
 
