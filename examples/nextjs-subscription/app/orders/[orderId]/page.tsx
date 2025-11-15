@@ -1,15 +1,56 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getOrder } from '../../../lib/orders';
+import { headers } from 'next/headers';
+
+import type { OrderStatus } from '../../../lib/db';
 
 type OrderDetailPageProps = {
   params: {
     orderId: string;
   };
+  searchParams?: {
+    email?: string;
+  };
 };
 
-export default async function OrderDetailPage({ params }: OrderDetailPageProps) {
-  const order = await getOrder(params.orderId);
+type OrderStatusResponse = {
+  id: string;
+  status: OrderStatus;
+  qrCode: string | null;
+  tradeNo: string | null;
+  tutorialUrl: string;
+  updatedAt: string;
+};
+
+async function fetchOrderDetail(orderId: string, email: string): Promise<OrderStatusResponse | null> {
+  if (!email) {
+    return null;
+  }
+
+  const headerList = headers();
+  const forwardedHost = headerList.get('x-forwarded-host');
+  const host = forwardedHost ?? headerList.get('host');
+  if (!host) {
+    return null;
+  }
+  const forwardedProto = headerList.get('x-forwarded-proto');
+  const protocol = forwardedProto ?? (host.includes('localhost') ? 'http' : 'https');
+  const apiUrl = `${protocol}://${host}/api/orders/${orderId}?email=${encodeURIComponent(email)}`;
+
+  const response = await fetch(apiUrl, {
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return (await response.json()) as OrderStatusResponse;
+}
+
+export default async function OrderDetailPage({ params, searchParams }: OrderDetailPageProps) {
+  const email = searchParams?.email ?? '';
+  const order = await fetchOrderDetail(params.orderId, email);
 
   if (!order) {
     notFound();
@@ -22,17 +63,13 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
       <div className="section-header">
         <div className="section-header-text">
           <h2>订单详情</h2>
+          <p className="section-subtitle">下单邮箱：{email || '（未提供）'}</p>
         </div>
         <div className="order-detail-actions">
           <Link href="/" className="secondary-button">
             返回套餐列表
           </Link>
-          <a
-            className="primary-button tutorial-cta-button"
-            href={order.tutorialUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
+          <a className="primary-button tutorial-cta-button" href={order.tutorialUrl} target="_blank" rel="noreferrer">
             点击查看教程
           </a>
         </div>
@@ -52,6 +89,20 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
               : '打开支付宝扫描二维码完成支付，系统会在成功后自动刷新订单状态。'}
           </p>
         </div>
+        <dl className="order-metadata">
+          <div>
+            <dt>订单号</dt>
+            <dd>{order.id}</dd>
+          </div>
+          <div>
+            <dt>支付宝交易号</dt>
+            <dd>{order.tradeNo ?? '—'}</dd>
+          </div>
+          <div>
+            <dt>最后同步时间</dt>
+            <dd>{new Date(order.updatedAt).toLocaleString()}</dd>
+          </div>
+        </dl>
       </div>
     </section>
   );
