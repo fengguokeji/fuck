@@ -109,6 +109,7 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
   useEffect(() => {
     if (
       !activeOrder ||
+      activeOrder.gateway !== 'alipay' ||
       !isMobileClient ||
       !activeOrder.qrCode ||
       schemeInvokedRef.current
@@ -133,7 +134,7 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
     if (!activeOrder || isMobileClient) {
       return;
     }
-    const targetUrl = activeOrder.qrCode ?? activeOrder.qrImage;
+    const targetUrl = activeOrder.gateway === 'alipay' ? activeOrder.qrCode : activeOrder.qrImage;
     if (!targetUrl || desktopRedirectRef.current) {
       return;
     }
@@ -268,7 +269,7 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
                   <button
                     type="button"
                     className="primary-button"
-                    onClick={() => activeOrder.qrCode && openAlipayClient(activeOrder.qrCode)}
+                    onClick={() => activeOrder.gateway === 'alipay' && openAlipayClient(activeOrder.qrCode)}
                   >
                     重新打开支付宝
                   </button>
@@ -302,7 +303,11 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
                   <button
                     type="button"
                     className="primary-button"
-                    onClick={() => openDesktopPaymentPage(activeOrder.qrCode ?? activeOrder.qrImage)}
+                    onClick={() =>
+                      openDesktopPaymentPage(
+                        activeOrder.gateway === 'alipay' ? activeOrder.qrCode : activeOrder.qrImage,
+                      )
+                    }
                   >
                     打开支付宝扫码页
                   </button>

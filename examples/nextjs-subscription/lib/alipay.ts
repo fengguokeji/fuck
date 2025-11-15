@@ -60,26 +60,16 @@ function readEnv(name: string) {
   return value;
 }
 
+function shouldForceMockGateway() {
+  return process.env.ALIPAY_FORCE_MOCK === 'true';
+}
+
 function hasAlipayKeyMaterial() {
   const appId = readEnv('ALIPAY_APP_ID');
   const privateKey = readEnv('ALIPAY_PRIVATE_KEY');
   const publicKey = readEnv('ALIPAY_ALIPAY_PUBLIC_KEY');
   const publicCert = readEnv('ALIPAY_ALIPAY_PUBLIC_CERT_PATH');
   return Boolean(appId && privateKey && (publicKey || publicCert));
-}
-
-function collectMissingKeyParts() {
-  const missing: string[] = [];
-  if (!readEnv('ALIPAY_APP_ID')) {
-    missing.push('ALIPAY_APP_ID');
-  }
-  if (!readEnv('ALIPAY_PRIVATE_KEY')) {
-    missing.push('ALIPAY_PRIVATE_KEY');
-  }
-  if (!readEnv('ALIPAY_ALIPAY_PUBLIC_KEY') && !readEnv('ALIPAY_ALIPAY_PUBLIC_CERT_PATH')) {
-    missing.push('ALIPAY_ALIPAY_PUBLIC_KEY 或 ALIPAY_ALIPAY_PUBLIC_CERT_PATH');
-  }
-  return missing;
 }
 
 const derivedNotifyUrl =
@@ -98,12 +88,12 @@ function getEndpointConfig() {
   return null;
 }
 
-function getClient(): AlipaySdk {
+function getClient(): AlipaySdk | null {
+  if (shouldForceMockGateway()) {
+    return null;
+  }
   if (!hasAlipayKeyMaterial()) {
-    const missingKeyParts = collectMissingKeyParts();
-    throw new GatewayError(
-      `缺少以下支付宝配置：${missingKeyParts.join('、')}。请在环境变量中补齐后再创建订单。`,
-    );
+    return null;
   }
   if (!alipayClient) {
     const endpointConfig = getEndpointConfig();
@@ -120,6 +110,13 @@ function getClient(): AlipaySdk {
     });
   }
   return alipayClient;
+}
+
+export function isMockMode() {
+  if (shouldForceMockGateway()) {
+    return true;
+  }
+  return !hasAlipayKeyMaterial();
 }
 
 type UnknownRecord = Record<string, unknown>;
@@ -245,15 +242,27 @@ function collectErrorMeta(error: unknown, stage: AttemptStage): AttemptMeta {
   return meta;
 }
 
+function buildMockPreOrder(order: OrderRecord): PreOrderResult {
+  const qrContent = `MOCK_PAYMENT://${order.id}`;
+  return {
+    tradeNo: `MOCK-${randomUUID()}`,
+    qrCode: qrContent,
+    gateway: 'mock',
+    payload: {
+      qrContent,
+    },
+  };
+}
+
 export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult> {
-  const missingKeyParts = collectMissingKeyParts();
-  if (missingKeyParts.length > 0) {
-    throw new GatewayError(
-      `缺少以下支付宝配置：${missingKeyParts.join('、')}。请在环境变量中补齐后再创建订单。`,
-    );
+  if (isMockMode()) {
+    return buildMockPreOrder(order);
   }
 
   const client = getClient();
+  if (!client) {
+    return buildMockPreOrder(order);
+  }
 
   const logger = new DebugLogger('alipay:precreate');
   const plan = findPlan(order.planId);

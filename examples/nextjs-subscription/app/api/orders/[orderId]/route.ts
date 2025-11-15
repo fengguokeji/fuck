@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getOrder } from '../../../../lib/orders';
-import { buildQrImage } from '../../../../lib/qr';
+import { buildQrImageUrl } from '../../../../lib/qr';
 
 export const runtime = 'nodejs';
 
@@ -21,13 +21,11 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: '订单不存在' }, { status: 404 });
   }
 
-  const qrImage = order.qrCode ? await buildQrImage(order.qrCode) : null;
-
   return NextResponse.json({
     id: order.id,
     status: order.status,
     qrCode: order.qrCode ?? null,
-    qrImage,
+    qrImage: order.qrCode ? buildQrImageUrl(order.qrCode) : null,
     tutorialUrl: order.tutorialUrl,
     tradeNo: order.tradeNo ?? null,
     updatedAt: order.updatedAt.toISOString(),

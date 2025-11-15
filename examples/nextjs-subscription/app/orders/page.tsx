@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { plans } from '../../lib/plans';
+import { buildQrImageUrl } from '../../lib/qr';
 
 type OrderHistoryItem = {
   id: string;
@@ -115,6 +116,7 @@ export default function OrdersPage() {
                   查看使用教程
                 </a>
               );
+              const qrImage = item.qrImage ?? (item.qrCode ? buildQrImageUrl(item.qrCode) : undefined);
               return (
                 <div key={item.id} className="history-item">
                   <div className="history-item-header">
@@ -129,9 +131,9 @@ export default function OrdersPage() {
                   <div className="history-item-actions">{renderTutorialButton()}</div>
                   <div className="history-item-body">
                     <div className="history-qr-box">
-                      {item.qrImage ? (
+                      {qrImage ? (
                         <>
-                          <img src={item.qrImage} alt={`订单 ${item.id} 的二维码`} />
+                          <img src={qrImage} alt={`订单 ${item.id} 的二维码`} />
                           <span>扫码支付或重新获取链接</span>
                         </>
                       ) : (
