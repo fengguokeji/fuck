@@ -13,8 +13,9 @@ export async function GET(request: Request) {
   }
 
   const orders = await getOrders(email.toLowerCase());
-  const enriched = await Promise.all(
-    orders.map(async (order) => ({
+
+  return NextResponse.json({
+    orders: orders.map((order) => ({
       id: order.id,
       planId: order.planId,
       amount: order.amount,
@@ -27,9 +28,5 @@ export async function GET(request: Request) {
       createdAt: order.createdAt.toISOString(),
       updatedAt: order.updatedAt.toISOString(),
     })),
-  );
-
-  return NextResponse.json({
-    orders: enriched,
   });
 }
