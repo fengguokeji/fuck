@@ -1,58 +1,189 @@
-import { randomUUID } from 'crypto';
-import { AlipaySdk } from 'alipay-sdk';
+import { createSign, createVerify } from 'crypto';
 import { findPlan } from './plans';
 import type { OrderRecord } from './db';
 
 export class GatewayError extends Error {
-  constructor(message: string, readonly debugLog?: string) {
+  constructor(message: string) {
     super(message);
     this.name = 'GatewayError';
   }
 }
 
-type DebugEntry = {
-  timestamp: string;
-  scope: string;
-  message: string;
-  details?: unknown;
+const ALIPAY_ALGORITHM_MAPPING = {
+  RSA: 'RSA-SHA1',
+  RSA2: 'RSA-SHA256',
+} as const;
+
+type SignType = keyof typeof ALIPAY_ALGORITHM_MAPPING;
+
+type PrecreateRequestBody = {
+  out_trade_no: string;
+  total_amount: string;
+  subject: string;
+  product_code?: string;
 };
-
-class DebugLogger {
-  private entries: DebugEntry[] = [];
-
-  constructor(private scope: string) {}
-
-  log(message: string, details?: unknown) {
-    this.entries.push({
-      timestamp: new Date().toISOString(),
-      scope: this.scope,
-      message,
-      details,
-    });
-  }
-
-  toString() {
-    return this.entries
-      .map((entry) => {
-        const detail =
-          entry.details === undefined
-            ? ''
-            : `\n${typeof entry.details === 'string' ? entry.details : JSON.stringify(entry.details, null, 2)}`;
-        return `[${entry.timestamp}] ${entry.scope} - ${entry.message}${detail}`;
-      })
-      .join('\n\n');
-  }
-}
-
 
 export type PreOrderResult = {
   tradeNo: string;
   qrCode: string;
-  gateway: 'alipay' | 'mock';
+  gateway: 'alipay';
   payload: Record<string, unknown>;
 };
 
-let alipayClient: AlipaySdk | null = null;
+type AlipayServiceOptions = {
+  appId: string;
+  privateKey: string;
+  publicKey: string;
+  notifyUrl: string;
+  returnUrl?: string;
+  gatewayBase?: string;
+  method?: string;
+  signType?: SignType;
+};
+
+class AlipayService {
+  private readonly gatewayUrl: string;
+  private readonly method: string;
+  private readonly charset = 'utf-8';
+  private readonly privateKey: string;
+  private readonly publicKey: string;
+  private readonly signType: SignType;
+
+  constructor(private readonly options: AlipayServiceOptions) {
+    this.method = options.method ?? 'alipay.trade.precreate';
+    this.signType = options.signType ?? 'RSA2';
+    const gatewayBase = options.gatewayBase ?? 'https://openapi.alipay.com';
+    this.gatewayUrl = `${gatewayBase}/gateway.do?charset=${this.charset}`;
+    this.privateKey = this.normalizeKey(options.privateKey, 'RSA PRIVATE KEY');
+    this.publicKey = this.normalizeKey(options.publicKey, 'PUBLIC KEY');
+  }
+
+  async precreate(body: PrecreateRequestBody) {
+    const params = this.buildCommonParams(body);
+    const signedParams = this.sign(params);
+    const payload = await this.postForm(signedParams);
+    const responseKey = `${this.method.replace(/\./g, '_')}_response`;
+    const response = payload[responseKey];
+    if (!response || typeof response !== 'object') {
+      throw new Error('支付宝返回数据格式异常');
+    }
+    const responseRecord = response as Record<string, unknown>;
+    const code = responseRecord.code as string | undefined;
+    if (code !== '10000') {
+      const message = (responseRecord.sub_msg ?? responseRecord.msg ?? '调用失败') as string;
+      throw new Error(`支付宝返回错误: ${code ?? 'UNKNOWN'} - ${message}`);
+    }
+    const qrCode = (responseRecord.qr_code ?? responseRecord.qrCode) as string | undefined;
+    const tradeNo = (responseRecord.trade_no ?? responseRecord.tradeNo ?? body.out_trade_no) as
+      | string
+      | undefined;
+    if (!qrCode) {
+      throw new Error('支付宝返回数据缺少二维码');
+    }
+    return {
+      tradeNo: tradeNo ?? body.out_trade_no,
+      qrCode,
+      payload,
+    } satisfies PreOrderResult;
+  }
+
+  verify(params: Record<string, string>) {
+    const sign = params.sign;
+    if (!sign) {
+      return false;
+    }
+    const signType = (params.sign_type as SignType | undefined) ?? this.signType;
+    const filtered: Record<string, string> = {};
+    for (const [key, value] of Object.entries(params)) {
+      if (key === 'sign' || key === 'sign_type') {
+        continue;
+      }
+      filtered[key] = value;
+    }
+    const signContent = this.getSignContent(filtered);
+    const verifier = createVerify(ALIPAY_ALGORITHM_MAPPING[signType] ?? ALIPAY_ALGORITHM_MAPPING.RSA2);
+    return verifier.update(signContent, 'utf8').verify(this.publicKey, sign, 'base64');
+  }
+
+  private buildCommonParams(body: PrecreateRequestBody) {
+    const params: Record<string, string> = {
+      app_id: this.options.appId,
+      method: this.method,
+      format: 'JSON',
+      charset: this.charset,
+      sign_type: this.signType,
+      version: '1.0',
+      timestamp: this.getCurrentTime(),
+      biz_content: JSON.stringify(body),
+    };
+    if (this.options.notifyUrl) {
+      params.notify_url = this.options.notifyUrl;
+    }
+    if (this.options.returnUrl) {
+      params.return_url = this.options.returnUrl;
+    }
+    return params;
+  }
+
+  private sign(params: Record<string, string>) {
+    const signContent = this.getSignContent(params);
+    const signer = createSign(ALIPAY_ALGORITHM_MAPPING[this.signType]);
+    const signature = signer.update(signContent, 'utf8').sign(this.privateKey, 'base64');
+    return { ...params, sign: signature };
+  }
+
+  private getSignContent(params: Record<string, string>) {
+    return Object.keys(params)
+      .filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '')
+      .sort()
+      .map((key) => `${key}=${params[key]}`)
+      .join('&');
+  }
+
+  private normalizeKey(key: string, type: 'RSA PRIVATE KEY' | 'PUBLIC KEY') {
+    const trimmed = key.trim();
+    if (trimmed.includes('BEGIN')) {
+      return trimmed;
+    }
+    const chunks = trimmed.replace(/\s+/g, '').match(/.{1,64}/g) ?? [];
+    return `-----BEGIN ${type}-----\n${chunks.join('\n')}\n-----END ${type}-----`;
+  }
+
+  private getCurrentTime() {
+    const date = new Date();
+    const pad = (value: number) => value.toString().padStart(2, '0');
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    const seconds = pad(date.getSeconds());
+    return `${date.getFullYear()}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+
+  private async postForm(params: Record<string, string>) {
+    const body = new URLSearchParams(params);
+    const response = await fetch(this.gatewayUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    });
+    const text = await response.text();
+    let payload: Record<string, unknown>;
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      throw new Error('无法解析支付宝响应');
+    }
+    if (!response.ok) {
+      throw new Error(`支付宝网关返回 HTTP ${response.status}`);
+    }
+    return payload;
+  }
+}
+
+let alipayClient: AlipayService | null = null;
 
 function readEnv(name: string) {
   const value = process.env[name];
@@ -62,369 +193,59 @@ function readEnv(name: string) {
   return value;
 }
 
-function shouldForceMockGateway() {
-  return process.env.ALIPAY_FORCE_MOCK === 'true';
-}
-
-function hasAlipayKeyMaterial() {
+function resolveConfig(): AlipayServiceOptions {
   const appId = readEnv('ALIPAY_APP_ID');
   const privateKey = readEnv('ALIPAY_PRIVATE_KEY');
-  const publicKey = readEnv('ALIPAY_ALIPAY_PUBLIC_KEY');
-  const publicCert = readEnv('ALIPAY_ALIPAY_PUBLIC_CERT_PATH');
-  return Boolean(appId && privateKey && (publicKey || publicCert));
-}
-
-const derivedNotifyUrl = process.env.ALIPAY_NOTIFY_URL ??
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}/api/alipay/notify` : undefined);
-
-function getEndpointConfig() {
+  const publicKey = readEnv('ALIPAY_PUBLIC_KEY');
+  const notifyUrl = readEnv('ALIPAY_NOTIFY_URL');
+  if (!appId || !privateKey || !publicKey || !notifyUrl) {
+    throw new Error('缺少支付宝配置，请检查环境变量 ALIPAY_APP_ID/ALIPAY_PRIVATE_KEY/ALIPAY_PUBLIC_KEY/ALIPAY_NOTIFY_URL');
+  }
   const useSandbox = process.env.ALIPAY_USE_SANDBOX === 'true';
-  if (useSandbox) {
-    const endpoint = 'https://openapi.alipaydev.com';
-    return {
-      endpoint,
-      gateway: `${endpoint}/gateway.do`,
-    };
-  }
-  return null;
+  return {
+    appId,
+    privateKey,
+    publicKey,
+    notifyUrl,
+    returnUrl: readEnv('ALIPAY_RETURN_URL'),
+    gatewayBase: useSandbox ? 'https://openapi.alipaydev.com' : 'https://openapi.alipay.com',
+    method: readEnv('ALIPAY_METHOD') ?? 'alipay.trade.precreate',
+  };
 }
 
-function getClient(): AlipaySdk | null {
-  if (shouldForceMockGateway()) {
-    return null;
-  }
-  if (!hasAlipayKeyMaterial()) {
-    return null;
-  }
+function getClient() {
   if (!alipayClient) {
-    const endpointConfig = getEndpointConfig();
-    const appId = readEnv('ALIPAY_APP_ID')!;
-    const privateKey = readEnv('ALIPAY_PRIVATE_KEY')!;
-    alipayClient = new AlipaySdk({
-      appId,
-      privateKey,
-      alipayPublicKey: readEnv('ALIPAY_ALIPAY_PUBLIC_KEY'),
-      alipayRootCertPath: readEnv('ALIPAY_ALIPAY_ROOT_CERT_PATH'),
-      alipayPublicCertPath: readEnv('ALIPAY_ALIPAY_PUBLIC_CERT_PATH'),
-      appCertPath: readEnv('ALIPAY_APP_CERT_PATH'),
-      ...(endpointConfig ?? {}),
-    });
+    const config = resolveConfig();
+    alipayClient = new AlipayService(config);
   }
   return alipayClient;
 }
 
-export function isMockMode() {
-  if (shouldForceMockGateway()) {
-    return true;
-  }
-  return !hasAlipayKeyMaterial();
-}
-
-type UnknownRecord = Record<string, unknown>;
-
-type PrecreateRequestBody = {
-  out_trade_no: string;
-  total_amount: string;
-  subject: string;
-  notify_url?: string;
-  product_code: string;
-};
-
-function collectObjectGraph(root: unknown): UnknownRecord[] {
-  const seen = new Set<object>();
-  const queue: unknown[] = [root];
-  const result: UnknownRecord[] = [];
-
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (!current || typeof current !== 'object') {
-      continue;
-    }
-    if (seen.has(current as object)) {
-      continue;
-    }
-    seen.add(current as object);
-    const record = current as UnknownRecord;
-    result.push(record);
-    for (const value of Object.values(record)) {
-      if (typeof value === 'object' && value !== null) {
-        queue.push(value);
-      }
-    }
-  }
-
-  return result;
-}
-
-function pickFirstString(records: UnknownRecord[], keys: string[]): string | undefined {
-  for (const record of records) {
-    for (const key of keys) {
-      const value = record[key];
-      if (typeof value === 'string' && value.length > 0) {
-        return value;
-      }
-    }
-  }
-  return undefined;
-}
-
-type AttemptStage = 'v3' | 'v2';
-
-type AttemptMeta = {
-  stage: AttemptStage;
-  httpStatus?: number;
-  traceId?: string;
-  errorCode?: string;
-  errorMessage?: string;
-};
-
-type AttemptSuccess = {
-  tradeNo: string;
-  qrCode: string;
-  payload: Record<string, unknown>;
-};
-
-type AttemptResult =
-  | { success: true; value: AttemptSuccess }
-  | { success: false; meta: AttemptMeta };
-
-function extractResponseFields(payload: unknown) {
-  const graph = collectObjectGraph(payload);
-  return {
-    tradeNo: pickFirstString(graph, ['tradeNo', 'trade_no']),
-    qrCode: pickFirstString(graph, ['qrCode', 'qr_code']),
-    errorCode: pickFirstString(graph, ['code', 'subCode', 'sub_code']),
-    errorMessage: pickFirstString(graph, ['message', 'msg', 'sub_msg']),
-  };
-}
-
-function describeFailure(meta?: AttemptMeta) {
-  if (!meta) {
-    return 'Failed to create Alipay pre-order';
-  }
-  const stageLabel = meta.stage === 'v3' ? 'V3 接口' : 'gateway.do 接口';
-  const details = [
-    stageLabel,
-    meta.httpStatus ? `HTTP ${meta.httpStatus}` : undefined,
-    meta.errorCode,
-    meta.errorMessage,
-    meta.traceId ? `traceId: ${meta.traceId}` : undefined,
-  ].filter(Boolean);
-  if (details.length === 0) {
-    return 'Failed to create Alipay pre-order';
-  }
-  return `Failed to create Alipay pre-order: ${details.join(' - ')}`;
-}
-
-function serializeError(error: unknown) {
-  if (error instanceof Error) {
-    return { message: error.message, stack: error.stack };
-  }
-  return error;
-}
-
-function collectErrorMeta(error: unknown, stage: AttemptStage): AttemptMeta {
-  const meta: AttemptMeta = { stage };
-  if (typeof error === 'object' && error !== null) {
-    const record = error as Record<string, unknown>;
-    if (typeof record.traceId === 'string') {
-      meta.traceId = record.traceId;
-    }
-    if (typeof record.responseHttpStatus === 'number') {
-      meta.httpStatus = record.responseHttpStatus;
-    }
-    if (typeof record.code === 'string') {
-      meta.errorCode = record.code;
-    }
-  }
-  if (error instanceof Error) {
-    meta.errorMessage = error.message;
-  }
-  return meta;
-}
-
-function buildMockPreOrder(order: OrderRecord): PreOrderResult {
-  const qrContent = `MOCK_PAYMENT://${order.id}`;
-  return {
-    tradeNo: `MOCK-${randomUUID()}`,
-    qrCode: qrContent,
-    gateway: 'mock',
-    payload: {
-      qrContent,
-    },
-  };
-}
-
 export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult> {
-  if (isMockMode()) {
-    return buildMockPreOrder(order);
-  }
-
-  const client = getClient();
-  if (!client) {
-    return buildMockPreOrder(order);
-  }
-
-  const logger = new DebugLogger('alipay:precreate');
   const plan = findPlan(order.planId);
-
-  logger.log('准备创建支付宝预订单', {
-    orderId: order.id,
-    planId: order.planId,
-    amount: order.amount,
-    useSandbox: process.env.ALIPAY_USE_SANDBOX === 'true',
-  });
-  logger.log('订单上下文', order);
-
   const requestBody: PrecreateRequestBody = {
     out_trade_no: order.id,
     total_amount: order.amount.toFixed(2),
     subject: plan?.name ?? 'Subscription Plan',
-    notify_url: derivedNotifyUrl,
     product_code: 'FACE_TO_FACE_PAYMENT',
   };
-  logger.log('请求参数', requestBody);
-  let resolvedResult: PreOrderResult | null = null;
-
-  const v3Result = await attemptV3Precreate(client, requestBody, logger);
-  if (v3Result.success) {
-    logger.log('预订单创建成功 (V3)', { tradeNo: v3Result.value.tradeNo, qrCode: v3Result.value.qrCode });
-    resolvedResult = {
-      tradeNo: v3Result.value.tradeNo,
-      qrCode: v3Result.value.qrCode,
+  try {
+    const client = getClient();
+    const result = await client.precreate(requestBody);
+    return {
+      tradeNo: result.tradeNo,
+      qrCode: result.qrCode,
       gateway: 'alipay',
-      payload: v3Result.value.payload,
+      payload: result.payload,
     } satisfies PreOrderResult;
-  } else {
-    logger.log('V3 接口未返回二维码，准备降级调用 gateway.do 接口');
-
-    const v2Result = await attemptV2Precreate(client, requestBody, logger);
-    if (v2Result.success) {
-      logger.log('预订单创建成功 (gateway.do)', {
-        tradeNo: v2Result.value.tradeNo,
-        qrCode: v2Result.value.qrCode,
-      });
-      resolvedResult = {
-        tradeNo: v2Result.value.tradeNo,
-        qrCode: v2Result.value.qrCode,
-        gateway: 'alipay',
-        payload: v2Result.value.payload,
-      } satisfies PreOrderResult;
-    } else {
-      const fallbackMeta = v2Result.meta ?? v3Result.meta;
-      throw new GatewayError(describeFailure(fallbackMeta), logger.toString());
-    }
-  }
-
-  if (!resolvedResult) {
-    throw new GatewayError('无法确定支付宝预订单结果', logger.toString());
-  }
-
-  return resolvedResult;
-}
-
-async function attemptV3Precreate(
-  client: AlipaySdk,
-  requestBody: PrecreateRequestBody,
-  logger: DebugLogger,
-): Promise<AttemptResult> {
-  try {
-    const response = await client.curl('POST', '/v3/alipay/trade/precreate', {
-      body: requestBody,
-    });
-    logger.log('支付宝 V3 响应元数据', {
-      traceId: response.traceId,
-      httpStatus: response.responseHttpStatus,
-    });
-    logger.log('支付宝 V3 原始响应', response.data);
-
-    const fields = extractResponseFields(response.data);
-    if (fields.qrCode) {
-      if (!fields.tradeNo) {
-        logger.log('支付宝 V3 响应缺少 tradeNo，使用 out_trade_no 兜底', {
-          outTradeNo: requestBody.out_trade_no,
-        });
-      }
-      return {
-        success: true,
-        value: {
-          tradeNo: fields.tradeNo ?? requestBody.out_trade_no,
-          qrCode: fields.qrCode,
-          payload: response.data as Record<string, unknown>,
-        },
-      };
-    }
-
-    logger.log('支付宝 V3 响应缺少必要字段', fields);
-    return {
-      success: false,
-      meta: {
-        stage: 'v3',
-        traceId: typeof response.traceId === 'string' ? response.traceId : undefined,
-        httpStatus: response.responseHttpStatus,
-        errorCode: fields.errorCode,
-        errorMessage: fields.errorMessage,
-      },
-    };
   } catch (error) {
-    logger.log('调用支付宝 V3 接口失败', serializeError(error));
-    return { success: false, meta: collectErrorMeta(error, 'v3') };
-  }
-}
-
-async function attemptV2Precreate(
-  client: AlipaySdk,
-  requestBody: PrecreateRequestBody,
-  logger: DebugLogger,
-): Promise<AttemptResult> {
-  try {
-    const { notify_url, ...bizContent } = requestBody;
-    const response = await client.exec('alipay.trade.precreate', {
-      notify_url,
-      bizContent,
-    });
-    logger.log('支付宝 gateway.do 原始响应', response);
-
-    const fields = extractResponseFields(response);
-    if (fields.qrCode) {
-      if (!fields.tradeNo) {
-        logger.log('gateway.do 响应缺少 tradeNo，使用 out_trade_no 兜底', {
-          outTradeNo: requestBody.out_trade_no,
-        });
-      }
-      return {
-        success: true,
-        value: {
-          tradeNo: fields.tradeNo ?? requestBody.out_trade_no,
-          qrCode: fields.qrCode,
-          payload: response as Record<string, unknown>,
-        },
-      };
-    }
-
-    logger.log('gateway.do 响应缺少必要字段', fields);
-    return {
-      success: false,
-      meta: {
-        stage: 'v2',
-        errorCode: fields.errorCode,
-        errorMessage: fields.errorMessage,
-      },
-    };
-  } catch (error) {
-    logger.log('调用支付宝 gateway.do 接口失败', serializeError(error));
-    return { success: false, meta: collectErrorMeta(error, 'v2') };
+    throw new GatewayError(error instanceof Error ? error.message : '创建支付宝订单失败');
   }
 }
 
 export function getNotifyVerifier() {
   const client = getClient();
-  if (!client) {
-    return {
-      verify: () => true,
-    };
-  }
   return {
-    verify: (params: Record<string, string>) => client.checkNotifySignV2(params),
+    verify: (params: Record<string, string>) => client.verify(params),
   };
 }
