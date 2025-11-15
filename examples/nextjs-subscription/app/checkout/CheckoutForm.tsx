@@ -10,7 +10,7 @@ type CreateOrderResponse = {
   qrCode: string;
   qrImage: string;
   status: string;
-  gateway: 'alipay' | 'mock';
+  gateway: 'alipay';
   tutorialUrl: string;
 };
 
@@ -108,13 +108,7 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
   }, [activeOrder, refreshOrderStatus]);
 
   useEffect(() => {
-    if (
-      !activeOrder ||
-      activeOrder.gateway !== 'alipay' ||
-      !isMobileClient ||
-      !activeOrder.qrCode ||
-      schemeInvokedRef.current
-    ) {
+    if (!activeOrder || !isMobileClient || !activeOrder.qrCode || schemeInvokedRef.current) {
       return;
     }
     schemeInvokedRef.current = true;
@@ -135,7 +129,7 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
     if (!activeOrder || isMobileClient) {
       return;
     }
-    const targetUrl = activeOrder.gateway === 'alipay' ? activeOrder.qrCode : activeOrder.qrImage;
+    const targetUrl = activeOrder.qrCode;
     if (!targetUrl || desktopRedirectRef.current) {
       return;
     }
@@ -267,11 +261,7 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
                     : '系统已尝试唤起支付宝客户端，请在完成支付后返回此页面，我们会自动同步订单状态。'}
                 </p>
                 {activeOrder.status !== 'paid' && (
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={() => activeOrder.gateway === 'alipay' && openAlipayClient(activeOrder.qrCode)}
-                  >
+                  <button type="button" className="primary-button" onClick={() => openAlipayClient(activeOrder.qrCode)}>
                     重新打开支付宝
                   </button>
                 )}
@@ -304,11 +294,7 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
                   <button
                     type="button"
                     className="primary-button"
-                    onClick={() =>
-                      openDesktopPaymentPage(
-                        activeOrder.gateway === 'alipay' ? activeOrder.qrCode : activeOrder.qrImage,
-                      )
-                    }
+                    onClick={() => openDesktopPaymentPage(activeOrder.qrCode)}
                   >
                     打开支付宝扫码页
                   </button>

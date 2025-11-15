@@ -2,7 +2,7 @@
 
 本示例展示如何使用 [Next.js](https://nextjs.org/)、[Vercel Postgres](https://vercel.com/postgres) 以及本仓库提供的 [`alipay-sdk`](https://www.npmjs.com/package/alipay-sdk) 搭建一套可直接部署到 Vercel 的订阅购买站点。示例涵盖创建支付宝预订单、展示扫码支付二维码、处理支付宝异步通知，以及让用户通过邮箱查询历史订单的完整流程。
 
-> **提示**：如果尚未准备支付宝密钥或数据库连接，本示例会自动进入模拟模式与内存存储模式，方便本地快速体验页面交互。
+> **提示**：示例默认直接对接支付宝当面付，请务必在本地或线上环境提供真实的支付宝密钥与回调地址；若暂未准备数据库连接，可以启用内存存储以体验界面交互。
 
 ## 功能特性
 
@@ -13,7 +13,7 @@
 - 右上角提供订单查询入口，跳转到独立页面使用邮箱检索历史订单并直接获取二维码与使用教程。
 - 集成在线客服快捷入口，一键跳转到客服对话窗口。
 - 在部署到 Vercel 时默认对接 Vercel Postgres，保证无状态函数环境下的数据持久化。
-- 本地开发未配置数据库时自动降级为内存存储；未配置支付宝密钥时自动使用模拟网关。
+- 本地开发未配置数据库时自动降级为内存存储，方便先行体验页面流程。
 
 ## 目录说明
 
@@ -36,7 +36,7 @@ examples/nextjs-subscription
    # 或使用 npm install / yarn install
    ```
 
-2. 将 `.env.example` 复制为 `.env.local` 并按需填写变量。若省略支付宝密钥，站点会自动进入模拟模式，二维码仅用于演示；即使填写了密钥，也可以把 `ALIPAY_FORCE_MOCK` 设为 `true` 来强制使用模拟网关，防止本地误调真实账号。如果暂时没有数据库，也可设置 `ORDERS_FORCE_MEMORY=true`，让订单只存储在内存中。
+2. 将 `.env.example` 复制为 `.env.local` 并按需填写变量。要想真实调起支付宝收款，必须提供 `ALIPAY_APP_ID`、`ALIPAY_PRIVATE_KEY`、`ALIPAY_PUBLIC_KEY` 与 `ALIPAY_NOTIFY_URL`。如果暂时没有数据库，也可设置 `ORDERS_FORCE_MEMORY=true`，让订单只存储在内存中。
 
 3. 启动开发服务器：
 
@@ -74,8 +74,8 @@ examples/nextjs-subscription
    - 在 [支付宝开放平台](https://open.alipay.com/) 创建应用并获取以下信息：
      - `ALIPAY_APP_ID`
      - `ALIPAY_PRIVATE_KEY`
-     - `ALIPAY_ALIPAY_PUBLIC_KEY`（或证书路径：`ALIPAY_APP_CERT_PATH`、`ALIPAY_ALIPAY_PUBLIC_CERT_PATH`、`ALIPAY_ALIPAY_ROOT_CERT_PATH`）
-   - 将异步通知地址设置为 `https://<你的 Vercel 域名>/api/alipay/notify`。
+     - `ALIPAY_PUBLIC_KEY`
+   - 将异步通知地址设置为 `https://<你的 Vercel 域名>/api/alipay/notify` 并填入 `ALIPAY_NOTIFY_URL`。
    - 若希望使用沙箱，可将 `ALIPAY_USE_SANDBOX` 设为 `true` 并配置沙箱密钥。
 
 5. **设置站点展示信息（可选）**
@@ -90,7 +90,7 @@ examples/nextjs-subscription
 1. 打开部署后的站点并填写邮箱，选择任意套餐创建订单。
 2. 若配置了真实密钥，桌面端会自动打开支付宝官方扫码页面（同时在站点内展示备用二维码），移动端会自动唤起支付宝客户端，支付完成后页面会自动跳转到订单详情。
 3. 通过右上角“订单查询”按钮跳转到查询页，输入下单邮箱即可再次获取二维码与教程链接。
-4. 若未配置密钥，二维码来自模拟模式，订单会立即标记为已支付，可用于联调前端流程。
+
 
 ## 自定义套餐二维码与教程
 
@@ -109,22 +109,20 @@ examples/nextjs-subscription
 | 变量 | 说明 |
 | --- | --- |
 | `ALIPAY_APP_ID` | 支付宝开放平台应用 App ID（生产或沙箱）。|
-| `ALIPAY_PRIVATE_KEY` | 应用私钥，需为 PKCS8 格式。|
-| `ALIPAY_ALIPAY_PUBLIC_KEY` | 支付宝公钥（或改用证书配置）。|
-| `ALIPAY_FORCE_MOCK` | 设为 `true` 时强制使用示例内置的模拟网关，即使同时提供了真实密钥，也不会向支付宝发起请求。|
+| `ALIPAY_PRIVATE_KEY` | 应用私钥，需为 PKCS1/PKCS8 格式。|
+| `ALIPAY_PUBLIC_KEY` | 支付宝公钥。|
 | `ORDERS_FORCE_MEMORY` | 设为 `true` 时跳过 Postgres，转而使用内存存储，适合本地演示或尚未准备数据库的场景。|
-| `ALIPAY_NOTIFY_URL` | 支付宝服务端通知回调地址；部署到 Vercel 后可留空，由应用自动推导。|
+| `ALIPAY_NOTIFY_URL` | 支付宝服务端通知回调地址，需与开放平台控制台填写的地址一致。|
 | `ALIPAY_USE_SANDBOX` | `true` 时使用沙箱网关，适合调试。|
 | `POSTGRES_URL` 等 | Vercel Postgres 或 Supabase Postgres 连接信息，详见上文。|
 | `SUPABASE_URL` 等 | 使用 Vercel × Supabase 集成时提供的变量，绑定后示例会自动启用兼容 Supabase 的数据库驱动。|
 | `NEXT_PUBLIC_SITE_NAME` | 页面展示的站点名称。|
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | 页面展示的支持邮箱。|
 
-缺失支付宝配置时，应用会使用模拟支付；缺失数据库配置时，订单仅存储在内存中，不会跨函数或重启保留。
+缺失数据库配置时，订单仅存储在内存中，不会跨函数或重启保留。
 
 ## 注意事项
 
-- 模拟模式不会向支付宝发起请求，只用于演示流程。上线前务必配置真实密钥并验证回调签名。
 - 若使用 Vercel Postgres，需确保项目至少绑定了 `POSTGRES_URL`。其它别名变量建议一并配置，以兼容 `@vercel/postgres` 的运行逻辑。
 - 在中国大陆访问 Vercel 可能需要额外的网络配置，部署域名也可能因 DNS 解析产生延迟。
 
