@@ -2,8 +2,8 @@ import { randomUUID } from 'crypto';
 import { findPlan } from './plans';
 import type { OrderRecord, OrderStatus } from './db';
 import { saveOrder, updateOrder, findOrdersByEmail, findOrderById } from './db';
-import { createPreOrder, isMockMode } from './alipay';
-import { buildQrImageUrl } from './qr';
+import { createPreOrder } from './alipay';
+import { buildQrImage } from './qr';
 
 export type CreateOrderInput = {
   email: string;
@@ -15,7 +15,6 @@ export type CreateOrderResponse = {
   tradeNo: string;
   qrCode: string;
   qrImage: string;
-  gateway: 'alipay' | 'mock';
 };
 
 export async function createOrder(input: CreateOrderInput): Promise<CreateOrderResponse> {
@@ -38,13 +37,10 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   };
 
   const preOrder = await createPreOrder(order);
-
-  const qrContentOverride = isMockMode() ? getPlanQrPayload(plan.id) : undefined;
-  const resolvedQrContent = qrContentOverride ?? preOrder.qrCode;
-  const qrImage = resolvedQrContent ? buildQrImageUrl(resolvedQrContent) : '';
+  const qrImage = await buildQrImage(preOrder.qrCode);
 
   order.tradeNo = preOrder.tradeNo;
-  order.qrCode = resolvedQrContent;
+  order.qrCode = preOrder.qrCode;
   order.gatewayPayload = preOrder.payload;
 
   await saveOrder(order);
@@ -54,7 +50,6 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     tradeNo: preOrder.tradeNo,
     qrCode: order.qrCode!,
     qrImage,
-    gateway: preOrder.gateway,
   };
 }
 
