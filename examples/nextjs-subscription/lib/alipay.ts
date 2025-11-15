@@ -248,6 +248,7 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
     amount: order.amount,
     useSandbox: process.env.ALIPAY_USE_SANDBOX === 'true',
   });
+  logger.log('支付宝原始响应', payload);
 
   const requestBody: PrecreateRequestBody = {
     out_trade_no: order.id,
