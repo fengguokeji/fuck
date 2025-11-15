@@ -272,7 +272,29 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
   } else {
     logger.log('V3 接口未返回二维码，准备降级调用 gateway.do 接口');
 
-    const v2Result = await attemptV2Precreate(client, requestBody, logger);
+  const payload: PrecreateRequestBody = {
+    out_trade_no: order.id,
+    total_amount: order.amount.toFixed(2),
+    subject: plan?.name ?? 'Subscription Plan',
+    notify_url: derivedNotifyUrl,
+    product_code: 'FACE_TO_FACE_PAYMENT',
+  };
+  logger.log('请求参数', payload);
+  let resolvedResult: PreOrderResult | null = null;
+
+  const v3Result = await attemptV3Precreate(client, payload, logger);
+  if (v3Result.success) {
+    logger.log('预订单创建成功 (V3)', { tradeNo: v3Result.value.tradeNo, qrCode: v3Result.value.qrCode });
+    resolvedResult = {
+      tradeNo: v3Result.value.tradeNo,
+      qrCode: v3Result.value.qrCode,
+      gateway: 'alipay',
+      payload: v3Result.value.payload,
+    } satisfies PreOrderResult;
+  } else {
+    logger.log('V3 接口未返回二维码，准备降级调用 gateway.do 接口');
+
+    const v2Result = await attemptV2Precreate(client, payload, logger);
     if (v2Result.success) {
       logger.log('预订单创建成功 (gateway.do)', {
         tradeNo: v2Result.value.tradeNo,
