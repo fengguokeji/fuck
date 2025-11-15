@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createOrder } from '../../../lib/orders';
 import { findPlan } from '../../../lib/plans';
+import { GatewayError } from '../../../lib/alipay';
 
 export const runtime = 'nodejs';
 
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('[orders:create]', error);
     const message = error instanceof Error ? error.message : '创建订单时出现异常，请稍后再试。';
-    return NextResponse.json({ error: message }, { status: 500 });
+    const debugLog = error instanceof GatewayError && error.debugLog ? error.debugLog : undefined;
+    return NextResponse.json({ error: message, debugLog }, { status: 500 });
   }
 }
