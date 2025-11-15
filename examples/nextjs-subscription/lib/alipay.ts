@@ -250,11 +250,6 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
   });
   logger.log('支付宝原始响应', payload);
 
-  const objectGraph = collectObjectGraph(payload);
-
-  const tradeNo = pickFirstString(objectGraph, ['tradeNo', 'trade_no']);
-  const qrCode = pickFirstString(objectGraph, ['qrCode', 'qr_code']);
-
   const requestBody: PrecreateRequestBody = {
     out_trade_no: order.id,
     total_amount: order.amount.toFixed(2),
@@ -263,38 +258,43 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
     product_code: 'FACE_TO_FACE_PAYMENT',
   };
   logger.log('请求参数', requestBody);
+  let resolvedResult: PreOrderResult | null = null;
+
   const v3Result = await attemptV3Precreate(client, requestBody, logger);
   if (v3Result.success) {
     logger.log('预订单创建成功 (V3)', { tradeNo: v3Result.value.tradeNo, qrCode: v3Result.value.qrCode });
-    return {
+    resolvedResult = {
       tradeNo: v3Result.value.tradeNo,
       qrCode: v3Result.value.qrCode,
       gateway: 'alipay',
       payload: v3Result.value.payload,
-    };
+    } satisfies PreOrderResult;
+  } else {
+    logger.log('V3 接口未返回二维码，准备降级调用 gateway.do 接口');
+
+    const v2Result = await attemptV2Precreate(client, requestBody, logger);
+    if (v2Result.success) {
+      logger.log('预订单创建成功 (gateway.do)', {
+        tradeNo: v2Result.value.tradeNo,
+        qrCode: v2Result.value.qrCode,
+      });
+      resolvedResult = {
+        tradeNo: v2Result.value.tradeNo,
+        qrCode: v2Result.value.qrCode,
+        gateway: 'alipay',
+        payload: v2Result.value.payload,
+      } satisfies PreOrderResult;
+    } else {
+      const fallbackMeta = v2Result.meta ?? v3Result.meta;
+      throw new GatewayError(describeFailure(fallbackMeta), logger.toString());
+    }
   }
-}
 
-  logger.log('预订单创建成功', { tradeNo, qrCode });
-
-  logger.log('V3 接口未返回二维码，准备降级调用 gateway.do 接口');
-
-  const v2Result = await attemptV2Precreate(client, requestBody, logger);
-  if (v2Result.success) {
-    logger.log('预订单创建成功 (gateway.do)', {
-      tradeNo: v2Result.value.tradeNo,
-      qrCode: v2Result.value.qrCode,
-    });
-    return {
-      tradeNo: v2Result.value.tradeNo,
-      qrCode: v2Result.value.qrCode,
-      gateway: 'alipay',
-      payload: v2Result.value.payload,
-    };
+  if (!resolvedResult) {
+    throw new GatewayError('无法确定支付宝预订单结果', logger.toString());
   }
 
-  const fallbackMeta = v2Result.meta ?? v3Result.meta;
-  throw new GatewayError(describeFailure(fallbackMeta), logger.toString());
+  return resolvedResult;
 }
 
 async function attemptV3Precreate(
@@ -313,11 +313,16 @@ async function attemptV3Precreate(
     logger.log('支付宝 V3 原始响应', response.data);
 
     const fields = extractResponseFields(response.data);
-    if (fields.tradeNo && fields.qrCode) {
+    if (fields.qrCode) {
+      if (!fields.tradeNo) {
+        logger.log('支付宝 V3 响应缺少 tradeNo，使用 out_trade_no 兜底', {
+          outTradeNo: requestBody.out_trade_no,
+        });
+      }
       return {
         success: true,
         value: {
-          tradeNo: fields.tradeNo,
+          tradeNo: fields.tradeNo ?? requestBody.out_trade_no,
           qrCode: fields.qrCode,
           payload: response.data as Record<string, unknown>,
         },
@@ -355,11 +360,16 @@ async function attemptV2Precreate(
     logger.log('支付宝 gateway.do 原始响应', response);
 
     const fields = extractResponseFields(response);
-    if (fields.tradeNo && fields.qrCode) {
+    if (fields.qrCode) {
+      if (!fields.tradeNo) {
+        logger.log('gateway.do 响应缺少 tradeNo，使用 out_trade_no 兜底', {
+          outTradeNo: requestBody.out_trade_no,
+        });
+      }
       return {
         success: true,
         value: {
-          tradeNo: fields.tradeNo,
+          tradeNo: fields.tradeNo ?? requestBody.out_trade_no,
           qrCode: fields.qrCode,
           payload: response as Record<string, unknown>,
         },

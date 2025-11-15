@@ -23,6 +23,9 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [debugLog, setDebugLog] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [orderResult, setOrderResult] = useState<
+    (CreateOrderResponse & { customerEmail: string }) | null
+  >(null);
   const router = useRouter();
 
   async function submitOrder(event: FormEvent<HTMLFormElement>) {
@@ -52,8 +55,7 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
         throw new Error(data.error ?? '无法创建订单');
       }
       setDebugLog(null);
-      const detailUrl = `/orders/${data.orderId}?email=${encodeURIComponent(normalizedEmail)}`;
-      router.push(detailUrl);
+      setOrderResult({ ...data, customerEmail: normalizedEmail });
     } catch (err) {
       setError(err instanceof Error ? err.message : '未知错误');
     } finally {
@@ -124,6 +126,44 @@ export default function CheckoutForm({ plan }: CheckoutFormProps) {
           </div>
           <pre className="debug-panel-body">{debugLog}</pre>
         </div>
+      )}
+
+      {orderResult && (
+        <section className="checkout-payment-card" aria-live="polite">
+          <div className="checkout-payment-card-header">
+            <div>
+              <p className="payment-pill">订单待支付</p>
+              <h3>请使用支付宝扫码付款</h3>
+              <p className="payment-hint">
+                订单号 {orderResult.orderId} · 金额 ¥{plan.price}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() =>
+                router.push(
+                  `/orders/${orderResult.orderId}?email=${encodeURIComponent(orderResult.customerEmail)}`,
+                )
+              }
+            >
+              查看订单详情
+            </button>
+          </div>
+          <div className="payment-panel">
+            <div className="qr-box">
+              <span className="qr-label">扫码支付</span>
+              <img
+                src={orderResult.qrCode}
+                alt={`订单 ${orderResult.orderId} 的支付宝支付二维码`}
+                className="qr-image"
+              />
+              <p className="qr-tip">
+                请使用支付宝扫描二维码完成支付，支付成功后可再次点击「查看订单详情」或前往订单列表查看状态。
+              </p>
+            </div>
+          </div>
+        </section>
       )}
 
     </form>
