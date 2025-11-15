@@ -21,12 +21,16 @@ const hasKeyMaterial = Boolean(
 const derivedNotifyUrl = process.env.ALIPAY_NOTIFY_URL ??
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}/api/alipay/notify` : undefined);
 
-function getEndpoint() {
+function getEndpointConfig() {
   const useSandbox = process.env.ALIPAY_USE_SANDBOX === 'true';
   if (useSandbox) {
-    return 'https://openapi.alipaydev.com';
+    const endpoint = 'https://openapi.alipaydev.com';
+    return {
+      endpoint,
+      gateway: `${endpoint}/gateway.do`,
+    };
   }
-  return undefined;
+  return null;
 }
 
 function getClient(): AlipaySdk | null {
@@ -34,6 +38,7 @@ function getClient(): AlipaySdk | null {
     return null;
   }
   if (!alipayClient) {
+    const endpointConfig = getEndpointConfig();
     alipayClient = new AlipaySdk({
       appId: process.env.ALIPAY_APP_ID!,
       privateKey: process.env.ALIPAY_PRIVATE_KEY!,
@@ -41,7 +46,7 @@ function getClient(): AlipaySdk | null {
       alipayRootCertPath: process.env.ALIPAY_ALIPAY_ROOT_CERT_PATH,
       alipayPublicCertPath: process.env.ALIPAY_ALIPAY_PUBLIC_CERT_PATH,
       appCertPath: process.env.ALIPAY_APP_CERT_PATH,
-      endpoint: getEndpoint(),
+      ...(endpointConfig ?? {}),
     });
   }
   return alipayClient;
@@ -80,16 +85,33 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
     },
   });
 
-  const data = response.data as { trade_no?: string; qr_code?: string };
-  if (!data?.qr_code || !data?.trade_no) {
-    throw new Error('Failed to create Alipay pre-order');
+  const payload = response.data as Record<string, any>;
+
+  const tradeNo = [payload, payload?.data, payload?.result]
+    .map(item => (item?.tradeNo ?? item?.trade_no) as string | undefined)
+    .find(Boolean);
+  const qrCode = [payload, payload?.data, payload?.result]
+    .map(item => (item?.qrCode ?? item?.qr_code) as string | undefined)
+    .find(Boolean);
+
+  const friendlyErrorMessage = (() => {
+    const code = payload?.code ?? payload?.data?.code ?? payload?.result?.code;
+    const message = payload?.message ?? payload?.msg ?? payload?.sub_msg;
+    if (code || message) {
+      return `Failed to create Alipay pre-order: ${[code, message].filter(Boolean).join(' - ')}`;
+    }
+    return 'Failed to create Alipay pre-order';
+  })();
+
+  if (!qrCode || !tradeNo) {
+    throw new Error(friendlyErrorMessage);
   }
 
   return {
-    tradeNo: data.trade_no,
-    qrCode: data.qr_code,
+    tradeNo,
+    qrCode,
     gateway: 'alipay',
-    payload: data as unknown as Record<string, unknown>,
+    payload: payload as Record<string, unknown>,
   };
 }
 
