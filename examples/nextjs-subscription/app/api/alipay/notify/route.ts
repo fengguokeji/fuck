@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getNotifyVerifier } from '../../../../lib/alipay';
+import { getNotifyVerifier, isMockMode } from '../../../../lib/alipay';
 import { markOrderStatus, getOrder } from '../../../../lib/orders';
 
 export const runtime = 'nodejs';
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   const verifier = getNotifyVerifier();
   const verified = verifier.verify(payload);
 
-  if (!verified) {
+  if (!verified && !isMockMode()) {
     return NextResponse.json({ error: 'invalid signature' }, { status: 400 });
   }
 
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'order not found' }, { status: 404 });
   }
 
-  if (tradeStatus === 'TRADE_SUCCESS' || tradeStatus === 'TRADE_FINISHED') {
+  if (tradeStatus === 'TRADE_SUCCESS' || tradeStatus === 'TRADE_FINISHED' || isMockMode()) {
     await markOrderStatus(order.id, 'paid', {
       gatewayPayload: payload,
       tradeNo: payload.trade_no ?? order.tradeNo,
