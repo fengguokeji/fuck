@@ -248,31 +248,6 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
     amount: order.amount,
     useSandbox: process.env.ALIPAY_USE_SANDBOX === 'true',
   });
-
-  const requestBody = {
-    out_trade_no: order.id,
-    total_amount: order.amount.toFixed(2),
-    subject: plan?.name ?? 'Subscription Plan',
-    notify_url: derivedNotifyUrl,
-    product_code: 'FACE_TO_FACE_PAYMENT',
-  };
-  logger.log('请求参数', requestBody);
-
-  let response;
-  try {
-    response = await client.curl('POST', '/v3/alipay/trade/precreate', {
-      body: requestBody,
-    });
-  } catch (error) {
-    logger.log('调用 alipay-sdk 失败', error instanceof Error ? { message: error.message, stack: error.stack } : error);
-    throw new GatewayError('Failed to create Alipay pre-order', logger.toString());
-  }
-
-  const payload = response.data as UnknownRecord;
-  logger.log('支付宝响应元数据', {
-    traceId: response.traceId,
-    httpStatus: response.responseHttpStatus,
-  });
   logger.log('支付宝原始响应', payload);
 
   const objectGraph = collectObjectGraph(payload);
@@ -280,37 +255,130 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
   const tradeNo = pickFirstString(objectGraph, ['tradeNo', 'trade_no']);
   const qrCode = pickFirstString(objectGraph, ['qrCode', 'qr_code']);
 
-  const errorCode = pickFirstString(objectGraph, ['code', 'subCode', 'sub_code']);
-  const errorMessage = pickFirstString(objectGraph, ['message', 'msg', 'sub_msg']);
-  const traceId = typeof response.traceId === 'string' ? response.traceId : undefined;
-
-  const friendlyErrorMessage = (() => {
-    const details = [
-      response.responseHttpStatus && response.responseHttpStatus !== 200
-        ? `HTTP ${response.responseHttpStatus}`
-        : undefined,
-      errorCode,
-      errorMessage,
-      traceId ? `traceId: ${traceId}` : undefined,
-    ].filter(Boolean);
-    if (details.length > 0) {
-      return `Failed to create Alipay pre-order: ${details.join(' - ')}`;
-    }
-
-  if (!qrCode || !tradeNo) {
-    logger.log('响应缺少必要字段', { tradeNo, qrCode, errorCode, errorMessage });
-    throw new GatewayError(friendlyErrorMessage, logger.toString());
+  const requestBody: PrecreateRequestBody = {
+    out_trade_no: order.id,
+    total_amount: order.amount.toFixed(2),
+    subject: plan?.name ?? 'Subscription Plan',
+    notify_url: derivedNotifyUrl,
+    product_code: 'FACE_TO_FACE_PAYMENT',
+  };
+  logger.log('请求参数', requestBody);
+  const v3Result = await attemptV3Precreate(client, requestBody, logger);
+  if (v3Result.success) {
+    logger.log('预订单创建成功 (V3)', { tradeNo: v3Result.value.tradeNo, qrCode: v3Result.value.qrCode });
+    return {
+      tradeNo: v3Result.value.tradeNo,
+      qrCode: v3Result.value.qrCode,
+      gateway: 'alipay',
+      payload: v3Result.value.payload,
+    };
   }
 }
 
   logger.log('预订单创建成功', { tradeNo, qrCode });
 
-  return {
-    tradeNo,
-    qrCode,
-    gateway: 'alipay',
-    payload: payload as Record<string, unknown>,
-  };
+  logger.log('V3 接口未返回二维码，准备降级调用 gateway.do 接口');
+
+  const v2Result = await attemptV2Precreate(client, requestBody, logger);
+  if (v2Result.success) {
+    logger.log('预订单创建成功 (gateway.do)', {
+      tradeNo: v2Result.value.tradeNo,
+      qrCode: v2Result.value.qrCode,
+    });
+    return {
+      tradeNo: v2Result.value.tradeNo,
+      qrCode: v2Result.value.qrCode,
+      gateway: 'alipay',
+      payload: v2Result.value.payload,
+    };
+  }
+
+  const fallbackMeta = v2Result.meta ?? v3Result.meta;
+  throw new GatewayError(describeFailure(fallbackMeta), logger.toString());
+}
+
+async function attemptV3Precreate(
+  client: AlipaySdk,
+  requestBody: PrecreateRequestBody,
+  logger: DebugLogger,
+): Promise<AttemptResult> {
+  try {
+    const response = await client.curl('POST', '/v3/alipay/trade/precreate', {
+      body: requestBody,
+    });
+    logger.log('支付宝 V3 响应元数据', {
+      traceId: response.traceId,
+      httpStatus: response.responseHttpStatus,
+    });
+    logger.log('支付宝 V3 原始响应', response.data);
+
+    const fields = extractResponseFields(response.data);
+    if (fields.tradeNo && fields.qrCode) {
+      return {
+        success: true,
+        value: {
+          tradeNo: fields.tradeNo,
+          qrCode: fields.qrCode,
+          payload: response.data as Record<string, unknown>,
+        },
+      };
+    }
+
+    logger.log('支付宝 V3 响应缺少必要字段', fields);
+    return {
+      success: false,
+      meta: {
+        stage: 'v3',
+        traceId: typeof response.traceId === 'string' ? response.traceId : undefined,
+        httpStatus: response.responseHttpStatus,
+        errorCode: fields.errorCode,
+        errorMessage: fields.errorMessage,
+      },
+    };
+  } catch (error) {
+    logger.log('调用支付宝 V3 接口失败', serializeError(error));
+    return { success: false, meta: collectErrorMeta(error, 'v3') };
+  }
+}
+
+async function attemptV2Precreate(
+  client: AlipaySdk,
+  requestBody: PrecreateRequestBody,
+  logger: DebugLogger,
+): Promise<AttemptResult> {
+  try {
+    const { notify_url, ...bizContent } = requestBody;
+    const response = await client.exec('alipay.trade.precreate', {
+      notify_url,
+      bizContent,
+    });
+    logger.log('支付宝 gateway.do 原始响应', response);
+
+    const fields = extractResponseFields(response);
+    if (fields.tradeNo && fields.qrCode) {
+      return {
+        success: true,
+        value: {
+          tradeNo: fields.tradeNo,
+          qrCode: fields.qrCode,
+          payload: response as Record<string, unknown>,
+        },
+      };
+    }
+
+    logger.log('gateway.do 响应缺少必要字段', fields);
+    return {
+      success: false,
+      meta: {
+        stage: 'v2',
+        errorCode: fields.errorCode,
+        errorMessage: fields.errorMessage,
+      },
+    };
+  } catch (error) {
+    logger.log('调用支付宝 gateway.do 接口失败', serializeError(error));
+    return { success: false, meta: collectErrorMeta(error, 'v2') };
+  }
 }
 
 export function getNotifyVerifier() {
