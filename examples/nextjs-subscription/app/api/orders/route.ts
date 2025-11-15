@@ -24,8 +24,8 @@ export async function POST(request: Request) {
       orderId: result.order.id,
       tradeNo: result.tradeNo,
       qrCode: result.qrCode,
+      qrImage: result.qrImage,
       status: result.order.status,
-      gateway: result.gateway,
       tutorialUrl: result.order.tutorialUrl,
     });
   } catch (error) {

@@ -11,6 +11,7 @@ type OrderHistoryItem = {
   currency: string;
   status: string;
   qrCode?: string;
+  qrImage?: string | null;
   tutorialUrl: string;
   createdAt: string;
   updatedAt: string;
@@ -128,9 +129,9 @@ export default function OrdersPage() {
                   <div className="history-item-actions">{renderTutorialButton()}</div>
                   <div className="history-item-body">
                     <div className="history-qr-box">
-                      {item.qrCode ? (
+                      {item.qrImage ? (
                         <>
-                          <img src={item.qrCode} alt={`订单 ${item.id} 的二维码`} />
+                          <img src={item.qrImage} alt={`订单 ${item.id} 的二维码`} />
                           <span>扫码支付或重新获取链接</span>
                         </>
                       ) : (

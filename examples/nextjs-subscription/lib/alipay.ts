@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import { AlipaySdk } from 'alipay-sdk';
 import { findPlan } from './plans';
 import type { OrderRecord } from './db';
@@ -48,19 +47,43 @@ class DebugLogger {
 export type PreOrderResult = {
   tradeNo: string;
   qrCode: string;
-  gateway: 'alipay' | 'mock';
   payload: Record<string, unknown>;
 };
 
 let alipayClient: AlipaySdk | null = null;
 
-const hasKeyMaterial = Boolean(
-  process.env.ALIPAY_APP_ID &&
-    process.env.ALIPAY_PRIVATE_KEY &&
-    (process.env.ALIPAY_ALIPAY_PUBLIC_KEY || process.env.ALIPAY_ALIPAY_PUBLIC_CERT_PATH)
-);
+function readEnv(name: string) {
+  const value = process.env[name];
+  if (!value || value === 'undefined' || value === 'null') {
+    return undefined;
+  }
+  return value;
+}
 
-const derivedNotifyUrl = process.env.ALIPAY_NOTIFY_URL ??
+function hasAlipayKeyMaterial() {
+  const appId = readEnv('ALIPAY_APP_ID');
+  const privateKey = readEnv('ALIPAY_PRIVATE_KEY');
+  const publicKey = readEnv('ALIPAY_ALIPAY_PUBLIC_KEY');
+  const publicCert = readEnv('ALIPAY_ALIPAY_PUBLIC_CERT_PATH');
+  return Boolean(appId && privateKey && (publicKey || publicCert));
+}
+
+function collectMissingKeyParts() {
+  const missing: string[] = [];
+  if (!readEnv('ALIPAY_APP_ID')) {
+    missing.push('ALIPAY_APP_ID');
+  }
+  if (!readEnv('ALIPAY_PRIVATE_KEY')) {
+    missing.push('ALIPAY_PRIVATE_KEY');
+  }
+  if (!readEnv('ALIPAY_ALIPAY_PUBLIC_KEY') && !readEnv('ALIPAY_ALIPAY_PUBLIC_CERT_PATH')) {
+    missing.push('ALIPAY_ALIPAY_PUBLIC_KEY 或 ALIPAY_ALIPAY_PUBLIC_CERT_PATH');
+  }
+  return missing;
+}
+
+const derivedNotifyUrl =
+  process.env.ALIPAY_NOTIFY_URL ??
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}/api/alipay/notify` : undefined);
 
 function getEndpointConfig() {
@@ -75,27 +98,28 @@ function getEndpointConfig() {
   return null;
 }
 
-function getClient(): AlipaySdk | null {
-  if (!hasKeyMaterial) {
-    return null;
+function getClient(): AlipaySdk {
+  if (!hasAlipayKeyMaterial()) {
+    const missingKeyParts = collectMissingKeyParts();
+    throw new GatewayError(
+      `缺少以下支付宝配置：${missingKeyParts.join('、')}。请在环境变量中补齐后再创建订单。`,
+    );
   }
   if (!alipayClient) {
     const endpointConfig = getEndpointConfig();
+    const appId = readEnv('ALIPAY_APP_ID')!;
+    const privateKey = readEnv('ALIPAY_PRIVATE_KEY')!;
     alipayClient = new AlipaySdk({
-      appId: process.env.ALIPAY_APP_ID!,
-      privateKey: process.env.ALIPAY_PRIVATE_KEY!,
-      alipayPublicKey: process.env.ALIPAY_ALIPAY_PUBLIC_KEY,
-      alipayRootCertPath: process.env.ALIPAY_ALIPAY_ROOT_CERT_PATH,
-      alipayPublicCertPath: process.env.ALIPAY_ALIPAY_PUBLIC_CERT_PATH,
-      appCertPath: process.env.ALIPAY_APP_CERT_PATH,
+      appId,
+      privateKey,
+      alipayPublicKey: readEnv('ALIPAY_ALIPAY_PUBLIC_KEY'),
+      alipayRootCertPath: readEnv('ALIPAY_ALIPAY_ROOT_CERT_PATH'),
+      alipayPublicCertPath: readEnv('ALIPAY_ALIPAY_PUBLIC_CERT_PATH'),
+      appCertPath: readEnv('ALIPAY_APP_CERT_PATH'),
       ...(endpointConfig ?? {}),
     });
   }
   return alipayClient;
-}
-
-export function isMockMode() {
-  return !hasKeyMaterial;
 }
 
 type UnknownRecord = Record<string, unknown>;
@@ -222,22 +246,14 @@ function collectErrorMeta(error: unknown, stage: AttemptStage): AttemptMeta {
 }
 
 export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult> {
-  if (isMockMode()) {
-    const qrContent = `MOCK_PAYMENT://${order.id}`;
-    return {
-      tradeNo: `MOCK-${randomUUID()}`,
-      qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(qrContent)}`,
-      gateway: 'mock',
-      payload: {
-        qrContent,
-      },
-    };
+  const missingKeyParts = collectMissingKeyParts();
+  if (missingKeyParts.length > 0) {
+    throw new GatewayError(
+      `缺少以下支付宝配置：${missingKeyParts.join('、')}。请在环境变量中补齐后再创建订单。`,
+    );
   }
 
   const client = getClient();
-  if (!client) {
-    throw new Error('Alipay client unavailable');
-  }
 
   const logger = new DebugLogger('alipay:precreate');
   const plan = findPlan(order.planId);
@@ -248,7 +264,7 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
     amount: order.amount,
     useSandbox: process.env.ALIPAY_USE_SANDBOX === 'true',
   });
-  logger.log('支付宝原始响应', payload);
+  logger.log('订单上下文', order);
 
   const requestBody: PrecreateRequestBody = {
     out_trade_no: order.id,
@@ -266,7 +282,6 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
     resolvedResult = {
       tradeNo: v3Result.value.tradeNo,
       qrCode: v3Result.value.qrCode,
-      gateway: 'alipay',
       payload: v3Result.value.payload,
     } satisfies PreOrderResult;
   } else {
@@ -281,7 +296,6 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
       resolvedResult = {
         tradeNo: v2Result.value.tradeNo,
         qrCode: v2Result.value.qrCode,
-        gateway: 'alipay',
         payload: v2Result.value.payload,
       } satisfies PreOrderResult;
     } else {
@@ -393,11 +407,6 @@ async function attemptV2Precreate(
 
 export function getNotifyVerifier() {
   const client = getClient();
-  if (!client) {
-    return {
-      verify: () => true,
-    };
-  }
   return {
     verify: (params: Record<string, string>) => client.checkNotifySignV2(params),
   };
