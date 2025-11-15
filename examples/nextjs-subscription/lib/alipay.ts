@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import { AlipaySdk } from 'alipay-sdk';
 import { findPlan } from './plans';
 import type { OrderRecord } from './db';
@@ -48,7 +47,6 @@ class DebugLogger {
 export type PreOrderResult = {
   tradeNo: string;
   qrCode: string;
-  gateway: 'alipay' | 'mock';
   payload: Record<string, unknown>;
 };
 
@@ -74,7 +72,8 @@ function hasAlipayKeyMaterial() {
   return Boolean(appId && privateKey && (publicKey || publicCert));
 }
 
-const derivedNotifyUrl = process.env.ALIPAY_NOTIFY_URL ??
+const derivedNotifyUrl =
+  process.env.ALIPAY_NOTIFY_URL ??
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}/api/alipay/notify` : undefined);
 
 function getEndpointConfig() {
@@ -292,7 +291,6 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
     resolvedResult = {
       tradeNo: v3Result.value.tradeNo,
       qrCode: v3Result.value.qrCode,
-      gateway: 'alipay',
       payload: v3Result.value.payload,
     } satisfies PreOrderResult;
   } else {
@@ -307,7 +305,6 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
       resolvedResult = {
         tradeNo: v2Result.value.tradeNo,
         qrCode: v2Result.value.qrCode,
-        gateway: 'alipay',
         payload: v2Result.value.payload,
       } satisfies PreOrderResult;
     } else {
@@ -419,11 +416,6 @@ async function attemptV2Precreate(
 
 export function getNotifyVerifier() {
   const client = getClient();
-  if (!client) {
-    return {
-      verify: () => true,
-    };
-  }
   return {
     verify: (params: Record<string, string>) => client.checkNotifySignV2(params),
   };

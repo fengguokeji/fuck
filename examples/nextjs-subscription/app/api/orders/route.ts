@@ -26,7 +26,6 @@ export async function POST(request: Request) {
       qrCode: result.qrCode,
       qrImage: result.qrImage,
       status: result.order.status,
-      gateway: result.gateway,
       tutorialUrl: result.order.tutorialUrl,
     });
   } catch (error) {

@@ -10,7 +10,6 @@ type CreateOrderResponse = {
   qrCode: string;
   qrImage: string;
   status: string;
-  gateway: 'alipay' | 'mock';
   tutorialUrl: string;
 };
 
