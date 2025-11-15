@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getOrders } from '../../../../lib/orders';
+import { buildQrImage } from '../../../../lib/qr';
 
 export const runtime = 'nodejs';
 
@@ -12,9 +13,8 @@ export async function GET(request: Request) {
   }
 
   const orders = await getOrders(email.toLowerCase());
-
-  return NextResponse.json({
-    orders: orders.map((order) => ({
+  const enriched = await Promise.all(
+    orders.map(async (order) => ({
       id: order.id,
       planId: order.planId,
       amount: order.amount,
@@ -22,9 +22,14 @@ export async function GET(request: Request) {
       status: order.status,
       tradeNo: order.tradeNo,
       qrCode: order.qrCode,
+      qrImage: order.qrCode ? await buildQrImage(order.qrCode) : null,
       tutorialUrl: order.tutorialUrl,
       createdAt: order.createdAt.toISOString(),
       updatedAt: order.updatedAt.toISOString(),
     })),
+  );
+
+  return NextResponse.json({
+    orders: enriched,
   });
 }

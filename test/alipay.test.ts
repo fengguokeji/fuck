@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, Verify } from 'node:crypto';
 import { strict as assert } from 'node:assert';
 import urllib, { MockAgent, setGlobalDispatcher, getGlobalDispatcher, Agent } from 'urllib';
 import mm from 'mm';
@@ -15,6 +15,7 @@ import {
   ProxyAgent,
 } from '../src/index.js';
 import { aesDecryptText } from '../src/util.js';
+import { mockStableApi } from './mockGateway.js';
 
 const privateKey = readFixturesFile('app-private-key.pem', 'ascii');
 const alipayPublicKey = readFixturesFile('alipay-public-key.pem', 'ascii');
@@ -111,6 +112,17 @@ describe('test/alipay.test.ts', () => {
   describe('curl()', () => {
     it('POST 验证调用成功', async () => {
       // https://opendocs.alipay.com/open-v3/b6702530_alipay.user.info.share?scene=common&pathHash=d03d61a2
+      mockStableApi(mockAgent, {
+        path: '/v3/alipay/user/info/share',
+        status: 401,
+        body: {
+          code: 'invalid-auth-token',
+          message: '无效的访问令牌',
+          links: [
+            { link: 'https://opendocs.alipay.com', desc: 'mock' },
+          ],
+        },
+      });
       await assert.rejects(async () => {
         await sdkStable.curl('POST', '/v3/alipay/user/info/share', {
           body: {
@@ -157,6 +169,15 @@ describe('test/alipay.test.ts', () => {
 
     it('POST 文件上传，使用 AlipayFormData', async () => {
       // https://opendocs.alipay.com/open-v3/5aa91070_alipay.open.file.upload?scene=common&pathHash=c8e11ccc
+      mm.data(Verify.prototype, 'verify', true);
+      mockStableApi(mockAgent, {
+        path: '/v3/alipay/open/file/upload',
+        body: {
+          file_id: 'mock-file-id',
+          code: '10000',
+          msg: 'Success',
+        },
+      });
       const filePath = getFixturesFile('demo.jpg');
       const form = new AlipayFormData();
       form.addField('biz_code', 'openpt_appstore');
@@ -170,7 +191,6 @@ describe('test/alipay.test.ts', () => {
         form,
         requestTimeout: 10000,
       });
-      // console.log(uploadResult);
       assert(uploadResult.data.file_id);
       assert.equal(uploadResult.responseHttpStatus, 200);
       assert(uploadResult.traceId);
@@ -178,6 +198,15 @@ describe('test/alipay.test.ts', () => {
 
     it('POST 文件上传，使用 AlipayFormData + stream', async () => {
       // https://opendocs.alipay.com/open-v3/5aa91070_alipay.open.file.upload?scene=common&pathHash=c8e11ccc
+      mm.data(Verify.prototype, 'verify', true);
+      mockStableApi(mockAgent, {
+        path: '/v3/alipay/open/file/upload',
+        body: {
+          file_id: 'mock-file-id',
+          code: '10000',
+          msg: 'Success',
+        },
+      });
       const filePath = getFixturesFile('demo.jpg');
       const form = new AlipayFormData();
       form.addField('biz_code', 'openpt_appstore');
@@ -191,7 +220,6 @@ describe('test/alipay.test.ts', () => {
         form,
         requestTimeout: 10000,
       });
-      // console.log(uploadResult);
       assert(uploadResult.data.file_id);
       assert.equal(uploadResult.responseHttpStatus, 200);
       assert(uploadResult.traceId);
@@ -199,6 +227,15 @@ describe('test/alipay.test.ts', () => {
 
     it('POST 文件上传，使用 AlipayFormData + buffer', async () => {
       // https://opendocs.alipay.com/open-v3/5aa91070_alipay.open.file.upload?scene=common&pathHash=c8e11ccc
+      mm.data(Verify.prototype, 'verify', true);
+      mockStableApi(mockAgent, {
+        path: '/v3/alipay/open/file/upload',
+        body: {
+          file_id: 'mock-file-id',
+          code: '10000',
+          msg: 'Success',
+        },
+      });
       const filePath = getFixturesFile('demo.jpg');
       const form = new AlipayFormData();
       form.addField('biz_code', 'openpt_appstore');
@@ -212,7 +249,6 @@ describe('test/alipay.test.ts', () => {
         form,
         requestTimeout: 10000,
       });
-      // console.log(uploadResult);
       assert(uploadResult.data.file_id);
       assert.equal(uploadResult.responseHttpStatus, 200);
       assert(uploadResult.traceId);
@@ -220,6 +256,15 @@ describe('test/alipay.test.ts', () => {
 
     it('POST 文件上传，使用 AlipayFormData with body', async () => {
       // https://opendocs.alipay.com/open-v3/5aa91070_alipay.open.file.upload?scene=common&pathHash=c8e11ccc
+      mm.data(Verify.prototype, 'verify', true);
+      mockStableApi(mockAgent, {
+        path: '/v3/alipay/open/file/upload',
+        body: {
+          file_id: 'mock-file-id',
+          code: '10000',
+          msg: 'Success',
+        },
+      });
       const filePath = getFixturesFile('demo.jpg');
       const form = new AlipayFormData();
       form.addFile('file_content', 'demo.jpg', filePath);
@@ -232,7 +277,6 @@ describe('test/alipay.test.ts', () => {
           biz_code: 'openpt_appstore',
         },
       });
-      console.log(uploadResult);
       assert(uploadResult.data.file_id);
       assert.equal(uploadResult.responseHttpStatus, 200);
       assert(uploadResult.traceId);
@@ -240,6 +284,15 @@ describe('test/alipay.test.ts', () => {
 
     it('POST 文件上传，使用 AlipayFormStream with body', async () => {
       // https://opendocs.alipay.com/open-v3/5aa91070_alipay.open.file.upload?scene=common&pathHash=c8e11ccc
+      mm.data(Verify.prototype, 'verify', true);
+      mockStableApi(mockAgent, {
+        path: '/v3/alipay/open/file/upload',
+        body: {
+          file_id: 'mock-file-id',
+          code: '10000',
+          msg: 'Success',
+        },
+      });
       const filePath = getFixturesFile('demo.jpg');
       const form = new AlipayFormStream();
       form.file('file_content', filePath, '图片.jpg');
@@ -252,7 +305,6 @@ describe('test/alipay.test.ts', () => {
           biz_code: 'openpt_appstore',
         },
       });
-      // console.log(uploadResult);
       assert(uploadResult.data.file_id);
       assert.equal(uploadResult.responseHttpStatus, 200);
       assert(uploadResult.traceId);
@@ -312,6 +364,15 @@ describe('test/alipay.test.ts', () => {
 
     it('POST /v3/alipay/user/deloauth/detail/query', async () => {
       // https://opendocs.alipay.com/open-v3/668cd27c_alipay.user.deloauth.detail.query?pathHash=3ab93168
+      mm.data(Verify.prototype, 'verify', true);
+      mockStableApi(mockAgent, {
+        path: '/v3/alipay/user/deloauth/detail/query',
+        body: {
+          items: [],
+          code: '10000',
+          msg: 'Success',
+        },
+      });
       const result = await sdkStable.curl('POST', '/v3/alipay/user/deloauth/detail/query', {
         body: {
           date: '20230102',
@@ -319,7 +380,6 @@ describe('test/alipay.test.ts', () => {
           limit: 1,
         },
       });
-      console.log(result);
       assert.equal(result.responseHttpStatus, 200);
     });
 
@@ -436,6 +496,16 @@ describe('test/alipay.test.ts', () => {
       //   return true;
       // });
       // https://opendocs.alipay.com/open-v3/5ea1017e_alipay.open.auth.userauth.relationship.query?scene=common&pathHash=0d3291b4
+      mockStableApi(mockAgent, {
+        path: /\/v3\/alipay\/open\/auth\/userauth\/relationship\/query.*/,
+        method: 'GET',
+        status: 400,
+        body: {
+          code: 'app-openid-not-match',
+          message: 'appid和openid不匹配',
+          links: [],
+        },
+      });
       await assert.rejects(async () => {
         await sdkStable.curl('GET', '/v3/alipay/open/auth/userauth/relationship/query', {
           query: {
@@ -452,6 +522,16 @@ describe('test/alipay.test.ts', () => {
         return true;
       });
       // https://opendocs.alipay.com/open-v3/d6c4d425_alipay.data.dataservice.bill.downloadurl.query?scene=common&pathHash=cc65bfb0
+      mm.data(Verify.prototype, 'verify', true);
+      mockStableApi(mockAgent, {
+        path: /\/v3\/alipay\/data\/dataservice\/bill\/downloadurl\/query.*/,
+        method: 'GET',
+        body: {
+          bill_download_url: 'https://example.com/bill.zip',
+          code: '10000',
+          msg: 'Success',
+        },
+      });
       const tradeResult = await sdkStable.curl<{
         bill_download_url: string;
       }>('GET', '/v3/alipay/data/dataservice/bill/downloadurl/query', {
@@ -464,6 +544,16 @@ describe('test/alipay.test.ts', () => {
       assert(tradeResult.traceId);
       assert(tradeResult.data.bill_download_url);
       // https://github.com/alipay/alipay-sdk-java-all/blob/9c2d7099579a42c454b0e00e3755a640758d0ae4/v3/docs/AlipayMarketingActivityApi.md
+      mockStableApi(mockAgent, {
+        path: /\/v3\/alipay\/marketing\/activity\/2016042700826004508401111111.*/,
+        method: 'GET',
+        status: 400,
+        body: {
+          code: 'INVALID_PARAMETER',
+          message: '参数有误',
+          links: [],
+        },
+      });
       await assert.rejects(async () => {
         await sdkStable.curl('GET', '/v3/alipay/marketing/activity/2016042700826004508401111111', {
           query: {
@@ -485,6 +575,15 @@ describe('test/alipay.test.ts', () => {
 
     it('转账接口强制要求证书签名调用', async () => {
       // https://opendocs.alipay.com/open-v3/08e7ef12_alipay.fund.trans.uni.transfer?scene=ca56bca529e64125a2786703c6192d41&pathHash=52e2898b
+      mockStableApi(mockAgent, {
+        path: '/v3/alipay/fund/trans/uni/transfer',
+        status: 400,
+        body: {
+          code: 'INVALID_PARAMETER',
+          message: '参数有误未开启验签，不允许传入sign_data签名参数',
+          links: [],
+        },
+      });
       await assert.rejects(async () => {
         await sdkStable.curl('POST', '/v3/alipay/fund/trans/uni/transfer', {
           body: {

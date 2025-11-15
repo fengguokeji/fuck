@@ -5,3 +5,4 @@ coverage/
 .DS_Store
 .tshy*
 dist
+examples/nextjs-subscription/.next

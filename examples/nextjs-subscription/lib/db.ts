@@ -25,8 +25,23 @@ type StorageDriver = {
   findById(id: string): Promise<OrderRecord | null>;
 };
 
-const inMemoryStore = new Map<string, OrderRecord>();
-let inMemoryInitialized = false;
+type MemoryState = {
+  store: Map<string, OrderRecord>;
+  initialized: boolean;
+};
+
+function getMemoryState(): MemoryState {
+  const globalWithState = globalThis as typeof globalThis & {
+    __alipay_subscription_memory_state__?: MemoryState;
+  };
+  if (!globalWithState.__alipay_subscription_memory_state__) {
+    globalWithState.__alipay_subscription_memory_state__ = {
+      store: new Map<string, OrderRecord>(),
+      initialized: false,
+    } satisfies MemoryState;
+  }
+  return globalWithState.__alipay_subscription_memory_state__;
+}
 
 let driver: StorageDriver | null = null;
 let ensured = false;
@@ -50,20 +65,27 @@ function getPgPool() {
   return pool;
 }
 
+const FORCE_IN_MEMORY_DRIVER = process.env.ORDERS_FORCE_MEMORY === 'true';
+
 const POSTGRES_CONNECTION_STRING =
-  process.env.POSTGRES_PRISMA_URL ||
-  process.env.POSTGRES_URL ||
-  process.env.POSTGRES_URL_NON_POOLING ||
+  (FORCE_IN_MEMORY_DRIVER
+    ? null
+    :
+        process.env.POSTGRES_PRISMA_URL ||
+        process.env.POSTGRES_URL ||
+        process.env.POSTGRES_URL_NON_POOLING) ||
   null;
 
-const IS_SUPABASE_CONNECTION = Boolean(
-  process.env.SUPABASE_URL ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_JWT_SECRET ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    POSTGRES_CONNECTION_STRING?.includes('supabase') ||
-    process.env.POSTGRES_HOST?.includes('supabase')
-);
+const IS_SUPABASE_CONNECTION =
+  !FORCE_IN_MEMORY_DRIVER &&
+  Boolean(
+    process.env.SUPABASE_URL ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_JWT_SECRET ||
+      process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      POSTGRES_CONNECTION_STRING?.includes('supabase') ||
+      process.env.POSTGRES_HOST?.includes('supabase')
+  );
 
 function createPoolConfigFromConnectionString(connectionString: string): PoolConfig {
   try {
@@ -89,6 +111,9 @@ function createPoolConfigFromConnectionString(connectionString: string): PoolCon
 }
 
 const PG_POOL_CONFIG: PoolConfig | null = (() => {
+  if (FORCE_IN_MEMORY_DRIVER) {
+    return null;
+  }
   if (POSTGRES_CONNECTION_STRING) {
     return createPoolConfigFromConnectionString(POSTGRES_CONNECTION_STRING);
   }
@@ -105,9 +130,9 @@ const PG_POOL_CONFIG: PoolConfig | null = (() => {
   return null;
 })();
 
-const POSTGRES_ENABLED = Boolean(PG_POOL_CONFIG);
+const POSTGRES_ENABLED = Boolean(PG_POOL_CONFIG) && !FORCE_IN_MEMORY_DRIVER;
 
-const SHOULD_USE_POOL_DRIVER = Boolean(PG_POOL_CONFIG && IS_SUPABASE_CONNECTION);
+const SHOULD_USE_POOL_DRIVER = Boolean(PG_POOL_CONFIG && IS_SUPABASE_CONNECTION && !FORCE_IN_MEMORY_DRIVER);
 
 let pool: Pool | null = null;
 
@@ -156,31 +181,32 @@ async function ensureTableWithPoolDriver(pgPool: Pool) {
 }
 
 function createInMemoryDriver(): StorageDriver {
-  if (!inMemoryInitialized) {
-    inMemoryStore.clear();
-    inMemoryInitialized = true;
+  const state = getMemoryState();
+  if (!state.initialized) {
+    state.store.clear();
+    state.initialized = true;
   }
 
   return {
     async create(order) {
-      inMemoryStore.set(order.id, order);
+      state.store.set(order.id, order);
     },
     async update(id, updates) {
-      const current = inMemoryStore.get(id);
+      const current = state.store.get(id);
       if (!current) return null;
       const next: OrderRecord = {
         ...current,
         ...updates,
         updatedAt: updates.updatedAt ?? new Date(),
       };
-      inMemoryStore.set(id, next);
+      state.store.set(id, next);
       return next;
     },
     async findByEmail(email) {
-      return Array.from(inMemoryStore.values()).filter((order) => order.email === email);
+      return Array.from(state.store.values()).filter((order) => order.email === email);
     },
     async findById(id) {
-      return inMemoryStore.get(id) ?? null;
+      return state.store.get(id) ?? null;
     },
   };
 }
