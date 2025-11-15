@@ -1,5 +1,5 @@
-import { randomUUID } from 'crypto';
-import { AlipaySdk } from 'alipay-sdk';
+import { randomUUID, createSign, createVerify, X509Certificate } from 'crypto';
+import { readFileSync } from 'fs';
 import { findPlan } from './plans';
 import type { OrderRecord } from './db';
 
@@ -44,7 +44,6 @@ class DebugLogger {
   }
 }
 
-
 export type PreOrderResult = {
   tradeNo: string;
   qrCode: string;
@@ -52,7 +51,211 @@ export type PreOrderResult = {
   payload: Record<string, unknown>;
 };
 
-let alipayClient: AlipaySdk | null = null;
+const SIGN_ALGORITHMS = {
+  RSA: 'RSA-SHA1',
+  RSA2: 'RSA-SHA256',
+} as const;
+
+type SignType = keyof typeof SIGN_ALGORITHMS;
+
+type LegacyClientOptions = {
+  appId: string;
+  privateKey: string;
+  alipayPublicKey?: string;
+  gatewayBase?: string;
+  charset?: string;
+  signType?: SignType;
+  defaultNotifyUrl?: string;
+  defaultReturnUrl?: string;
+};
+
+class LegacyAlipayClient {
+  private readonly appId: string;
+  private readonly privateKey: string;
+  private readonly alipayPublicKey?: string;
+  private readonly gatewayUrl: string;
+  private readonly signType: SignType;
+  private readonly charset: string;
+  private readonly defaultNotifyUrl?: string;
+  private readonly defaultReturnUrl?: string;
+
+  constructor(options: LegacyClientOptions) {
+    this.appId = options.appId;
+    this.privateKey = this.normalizeKey(options.privateKey, 'PRIVATE KEY');
+    this.alipayPublicKey = options.alipayPublicKey
+      ? this.normalizeKey(options.alipayPublicKey, 'PUBLIC KEY')
+      : undefined;
+    this.signType = options.signType ?? 'RSA2';
+    this.charset = options.charset ?? 'utf-8';
+    const gatewayBase = options.gatewayBase ?? 'https://openapi.alipay.com';
+    this.gatewayUrl = `${gatewayBase}/gateway.do?charset=${this.charset}`;
+    this.defaultNotifyUrl = options.defaultNotifyUrl;
+    this.defaultReturnUrl = options.defaultReturnUrl;
+  }
+
+  async precreate(body: PrecreateRequestBody) {
+    const { notify_url, ...bizContent } = body;
+    const response = await this.call('alipay.trade.precreate', {
+      bizContent,
+      notifyUrl: notify_url,
+    });
+
+    const code = response.response.code;
+    if (code !== '10000') {
+      const subMsg = response.response.sub_msg ?? response.response.msg ?? 'UNKNOWN ERROR';
+      throw new Error(`支付宝返回错误: ${code ?? 'UNKNOWN'} - ${subMsg}`);
+    }
+
+    const qrCode = (response.response.qr_code ?? response.response.qrCode) as string | undefined;
+    const tradeNo = (response.response.trade_no ?? response.response.tradeNo ?? body.out_trade_no) as string | undefined;
+
+    if (!qrCode) {
+      throw new Error('支付宝返回数据缺少二维码');
+    }
+
+    return {
+      tradeNo: tradeNo ?? body.out_trade_no,
+      qrCode,
+      payload: response.raw,
+    } satisfies Omit<PreOrderResult, 'gateway'>;
+  }
+
+  verify(params: Record<string, string>) {
+    if (!this.alipayPublicKey) {
+      return false;
+    }
+    const sign = params.sign;
+    if (!sign) {
+      return false;
+    }
+    const signType = (params.sign_type as SignType | undefined) ?? this.signType;
+    const filtered: Record<string, string> = {};
+    for (const [key, value] of Object.entries(params)) {
+      if (key === 'sign' || key === 'sign_type') {
+        continue;
+      }
+      filtered[key] = value;
+    }
+    const content = this.buildSignContent(filtered);
+    const verifier = createVerify(SIGN_ALGORITHMS[signType] ?? SIGN_ALGORITHMS.RSA2);
+    return verifier.update(content, 'utf8').verify(this.alipayPublicKey, sign, 'base64');
+  }
+
+  private async call(method: string, options: {
+    bizContent?: Record<string, unknown>;
+    notifyUrl?: string;
+    returnUrl?: string;
+    extraParams?: Record<string, string>;
+  }) {
+    const params = this.buildCommonParams(method, options);
+    const signed = this.signParams(params);
+    const payload = await this.postForm(signed);
+    return this.extractResponse(method, payload);
+  }
+
+  private buildCommonParams(method: string, options: {
+    bizContent?: Record<string, unknown>;
+    notifyUrl?: string;
+    returnUrl?: string;
+    extraParams?: Record<string, string>;
+  }) {
+    const params: Record<string, string> = {
+      app_id: this.appId,
+      method,
+      format: 'JSON',
+      charset: this.charset,
+      sign_type: this.signType,
+      timestamp: this.getCurrentTime(),
+      version: '1.0',
+      ...(options.extraParams ?? {}),
+    };
+
+    const notifyUrl = options.notifyUrl ?? this.defaultNotifyUrl;
+    if (notifyUrl) {
+      params.notify_url = notifyUrl;
+    }
+
+    const returnUrl = options.returnUrl ?? this.defaultReturnUrl;
+    if (returnUrl) {
+      params.return_url = returnUrl;
+    }
+
+    if (options.bizContent) {
+      params.biz_content = JSON.stringify(options.bizContent);
+    }
+
+    return params;
+  }
+
+  private signParams(params: Record<string, string>) {
+    const signStr = this.buildSignContent(params);
+    const sign = createSign(SIGN_ALGORITHMS[this.signType])
+      .update(signStr, 'utf8')
+      .sign(this.privateKey, 'base64');
+    return { ...params, sign };
+  }
+
+  private buildSignContent(params: Record<string, string>) {
+    return Object.keys(params)
+      .filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '')
+      .sort()
+      .map((key) => `${key}=${params[key]}`)
+      .join('&');
+  }
+
+  private normalizeKey(key: string, type: 'PRIVATE KEY' | 'PUBLIC KEY') {
+    const trimmed = key.trim();
+    if (trimmed.includes('BEGIN')) {
+      return trimmed;
+    }
+    const chunks = trimmed.replace(/\s+/g, '').match(/.{1,64}/g) ?? [];
+    return `-----BEGIN ${type}-----\n${chunks.join('\n')}\n-----END ${type}-----`;
+  }
+
+  private getCurrentTime() {
+    const date = new Date();
+    const pad = (value: number) => value.toString().padStart(2, '0');
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    const seconds = pad(date.getSeconds());
+    return `${date.getFullYear()}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+
+  private async postForm(params: Record<string, string>) {
+    const body = new URLSearchParams(params);
+    const response = await fetch(this.gatewayUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    });
+    const text = await response.text();
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(text);
+    } catch (error) {
+      throw new Error(`无法解析支付宝响应: ${text}`);
+    }
+    if (!response.ok) {
+      throw new Error(`支付宝网关返回 HTTP ${response.status}`);
+    }
+    return parsed;
+  }
+
+  private extractResponse(method: string, payload: Record<string, unknown>) {
+    const responseKey = `${method.replace(/\./g, '_')}_response`;
+    const response = payload[responseKey];
+    if (!response || typeof response !== 'object') {
+      throw new Error('支付宝返回数据格式异常');
+    }
+    return { response: response as Record<string, unknown>, raw: payload };
+  }
+}
+
+let alipayClient: LegacyAlipayClient | null = null;
 
 function readEnv(name: string) {
   const value = process.env[name];
@@ -62,6 +265,38 @@ function readEnv(name: string) {
   return value;
 }
 
+function readFileIfPresent(path?: string) {
+  if (!path) {
+    return undefined;
+  }
+  try {
+    return readFileSync(path, 'utf8');
+  } catch {
+    return undefined;
+  }
+}
+
+function resolveAlipayPublicKey() {
+  const direct = readEnv('ALIPAY_ALIPAY_PUBLIC_KEY');
+  if (direct) {
+    return direct;
+  }
+  const certPath = readEnv('ALIPAY_ALIPAY_PUBLIC_CERT_PATH');
+  if (!certPath) {
+    return undefined;
+  }
+  const content = readFileIfPresent(certPath);
+  if (!content) {
+    return undefined;
+  }
+  try {
+    const cert = new X509Certificate(content);
+    return cert.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+  } catch {
+    return undefined;
+  }
+}
+
 function shouldForceMockGateway() {
   return process.env.ALIPAY_FORCE_MOCK === 'true';
 }
@@ -69,27 +304,21 @@ function shouldForceMockGateway() {
 function hasAlipayKeyMaterial() {
   const appId = readEnv('ALIPAY_APP_ID');
   const privateKey = readEnv('ALIPAY_PRIVATE_KEY');
-  const publicKey = readEnv('ALIPAY_ALIPAY_PUBLIC_KEY');
-  const publicCert = readEnv('ALIPAY_ALIPAY_PUBLIC_CERT_PATH');
-  return Boolean(appId && privateKey && (publicKey || publicCert));
+  const publicKey = resolveAlipayPublicKey();
+  return Boolean(appId && privateKey && publicKey);
 }
 
-const derivedNotifyUrl = process.env.ALIPAY_NOTIFY_URL ??
+const derivedNotifyUrl =
+  process.env.ALIPAY_NOTIFY_URL ??
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}/api/alipay/notify` : undefined);
 
-function getEndpointConfig() {
-  const useSandbox = process.env.ALIPAY_USE_SANDBOX === 'true';
-  if (useSandbox) {
-    const endpoint = 'https://openapi.alipaydev.com';
-    return {
-      endpoint,
-      gateway: `${endpoint}/gateway.do`,
-    };
-  }
-  return null;
+function getGatewayBase() {
+  return process.env.ALIPAY_USE_SANDBOX === 'true'
+    ? 'https://openapi.alipaydev.com'
+    : 'https://openapi.alipay.com';
 }
 
-function getClient(): AlipaySdk | null {
+function getClient(): LegacyAlipayClient | null {
   if (shouldForceMockGateway()) {
     return null;
   }
@@ -97,17 +326,16 @@ function getClient(): AlipaySdk | null {
     return null;
   }
   if (!alipayClient) {
-    const endpointConfig = getEndpointConfig();
     const appId = readEnv('ALIPAY_APP_ID')!;
     const privateKey = readEnv('ALIPAY_PRIVATE_KEY')!;
-    alipayClient = new AlipaySdk({
+    const publicKey = resolveAlipayPublicKey()!;
+    alipayClient = new LegacyAlipayClient({
       appId,
       privateKey,
-      alipayPublicKey: readEnv('ALIPAY_ALIPAY_PUBLIC_KEY'),
-      alipayRootCertPath: readEnv('ALIPAY_ALIPAY_ROOT_CERT_PATH'),
-      alipayPublicCertPath: readEnv('ALIPAY_ALIPAY_PUBLIC_CERT_PATH'),
-      appCertPath: readEnv('ALIPAY_APP_CERT_PATH'),
-      ...(endpointConfig ?? {}),
+      alipayPublicKey: publicKey,
+      gatewayBase: getGatewayBase(),
+      defaultNotifyUrl: derivedNotifyUrl,
+      defaultReturnUrl: readEnv('ALIPAY_RETURN_URL'),
     });
   }
   return alipayClient;
@@ -120,8 +348,6 @@ export function isMockMode() {
   return !hasAlipayKeyMaterial();
 }
 
-type UnknownRecord = Record<string, unknown>;
-
 type PrecreateRequestBody = {
   out_trade_no: string;
   total_amount: string;
@@ -130,117 +356,11 @@ type PrecreateRequestBody = {
   product_code: string;
 };
 
-function collectObjectGraph(root: unknown): UnknownRecord[] {
-  const seen = new Set<object>();
-  const queue: unknown[] = [root];
-  const result: UnknownRecord[] = [];
-
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (!current || typeof current !== 'object') {
-      continue;
-    }
-    if (seen.has(current as object)) {
-      continue;
-    }
-    seen.add(current as object);
-    const record = current as UnknownRecord;
-    result.push(record);
-    for (const value of Object.values(record)) {
-      if (typeof value === 'object' && value !== null) {
-        queue.push(value);
-      }
-    }
-  }
-
-  return result;
-}
-
-function pickFirstString(records: UnknownRecord[], keys: string[]): string | undefined {
-  for (const record of records) {
-    for (const key of keys) {
-      const value = record[key];
-      if (typeof value === 'string' && value.length > 0) {
-        return value;
-      }
-    }
-  }
-  return undefined;
-}
-
-type AttemptStage = 'v3' | 'v2';
-
-type AttemptMeta = {
-  stage: AttemptStage;
-  httpStatus?: number;
-  traceId?: string;
-  errorCode?: string;
-  errorMessage?: string;
-};
-
-type AttemptSuccess = {
-  tradeNo: string;
-  qrCode: string;
-  payload: Record<string, unknown>;
-};
-
-type AttemptResult =
-  | { success: true; value: AttemptSuccess }
-  | { success: false; meta: AttemptMeta };
-
-function extractResponseFields(payload: unknown) {
-  const graph = collectObjectGraph(payload);
-  return {
-    tradeNo: pickFirstString(graph, ['tradeNo', 'trade_no']),
-    qrCode: pickFirstString(graph, ['qrCode', 'qr_code']),
-    errorCode: pickFirstString(graph, ['code', 'subCode', 'sub_code']),
-    errorMessage: pickFirstString(graph, ['message', 'msg', 'sub_msg']),
-  };
-}
-
-function describeFailure(meta?: AttemptMeta) {
-  if (!meta) {
-    return 'Failed to create Alipay pre-order';
-  }
-  const stageLabel = meta.stage === 'v3' ? 'V3 接口' : 'gateway.do 接口';
-  const details = [
-    stageLabel,
-    meta.httpStatus ? `HTTP ${meta.httpStatus}` : undefined,
-    meta.errorCode,
-    meta.errorMessage,
-    meta.traceId ? `traceId: ${meta.traceId}` : undefined,
-  ].filter(Boolean);
-  if (details.length === 0) {
-    return 'Failed to create Alipay pre-order';
-  }
-  return `Failed to create Alipay pre-order: ${details.join(' - ')}`;
-}
-
 function serializeError(error: unknown) {
   if (error instanceof Error) {
     return { message: error.message, stack: error.stack };
   }
   return error;
-}
-
-function collectErrorMeta(error: unknown, stage: AttemptStage): AttemptMeta {
-  const meta: AttemptMeta = { stage };
-  if (typeof error === 'object' && error !== null) {
-    const record = error as Record<string, unknown>;
-    if (typeof record.traceId === 'string') {
-      meta.traceId = record.traceId;
-    }
-    if (typeof record.responseHttpStatus === 'number') {
-      meta.httpStatus = record.responseHttpStatus;
-    }
-    if (typeof record.code === 'string') {
-      meta.errorCode = record.code;
-    }
-  }
-  if (error instanceof Error) {
-    meta.errorMessage = error.message;
-  }
-  return meta;
 }
 
 function buildMockPreOrder(order: OrderRecord): PreOrderResult {
@@ -284,136 +404,22 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
     product_code: 'FACE_TO_FACE_PAYMENT',
   };
   logger.log('请求参数', requestBody);
-  let resolvedResult: PreOrderResult | null = null;
 
-  const v3Result = await attemptV3Precreate(client, requestBody, logger);
-  if (v3Result.success) {
-    logger.log('预订单创建成功 (V3)', { tradeNo: v3Result.value.tradeNo, qrCode: v3Result.value.qrCode });
-    resolvedResult = {
-      tradeNo: v3Result.value.tradeNo,
-      qrCode: v3Result.value.qrCode,
+  try {
+    const result = await client.precreate(requestBody);
+    logger.log('预订单创建成功', { tradeNo: result.tradeNo, qrCode: result.qrCode });
+    return {
+      tradeNo: result.tradeNo,
+      qrCode: result.qrCode,
       gateway: 'alipay',
-      payload: v3Result.value.payload,
+      payload: result.payload,
     } satisfies PreOrderResult;
-  } else {
-    logger.log('V3 接口未返回二维码，准备降级调用 gateway.do 接口');
-
-    const v2Result = await attemptV2Precreate(client, requestBody, logger);
-    if (v2Result.success) {
-      logger.log('预订单创建成功 (gateway.do)', {
-        tradeNo: v2Result.value.tradeNo,
-        qrCode: v2Result.value.qrCode,
-      });
-      resolvedResult = {
-        tradeNo: v2Result.value.tradeNo,
-        qrCode: v2Result.value.qrCode,
-        gateway: 'alipay',
-        payload: v2Result.value.payload,
-      } satisfies PreOrderResult;
-    } else {
-      const fallbackMeta = v2Result.meta ?? v3Result.meta;
-      throw new GatewayError(describeFailure(fallbackMeta), logger.toString());
-    }
-  }
-
-  if (!resolvedResult) {
-    throw new GatewayError('无法确定支付宝预订单结果', logger.toString());
-  }
-
-  return resolvedResult;
-}
-
-async function attemptV3Precreate(
-  client: AlipaySdk,
-  requestBody: PrecreateRequestBody,
-  logger: DebugLogger,
-): Promise<AttemptResult> {
-  try {
-    const response = await client.curl('POST', '/v3/alipay/trade/precreate', {
-      body: requestBody,
-    });
-    logger.log('支付宝 V3 响应元数据', {
-      traceId: response.traceId,
-      httpStatus: response.responseHttpStatus,
-    });
-    logger.log('支付宝 V3 原始响应', response.data);
-
-    const fields = extractResponseFields(response.data);
-    if (fields.qrCode) {
-      if (!fields.tradeNo) {
-        logger.log('支付宝 V3 响应缺少 tradeNo，使用 out_trade_no 兜底', {
-          outTradeNo: requestBody.out_trade_no,
-        });
-      }
-      return {
-        success: true,
-        value: {
-          tradeNo: fields.tradeNo ?? requestBody.out_trade_no,
-          qrCode: fields.qrCode,
-          payload: response.data as Record<string, unknown>,
-        },
-      };
-    }
-
-    logger.log('支付宝 V3 响应缺少必要字段', fields);
-    return {
-      success: false,
-      meta: {
-        stage: 'v3',
-        traceId: typeof response.traceId === 'string' ? response.traceId : undefined,
-        httpStatus: response.responseHttpStatus,
-        errorCode: fields.errorCode,
-        errorMessage: fields.errorMessage,
-      },
-    };
   } catch (error) {
-    logger.log('调用支付宝 V3 接口失败', serializeError(error));
-    return { success: false, meta: collectErrorMeta(error, 'v3') };
-  }
-}
-
-async function attemptV2Precreate(
-  client: AlipaySdk,
-  requestBody: PrecreateRequestBody,
-  logger: DebugLogger,
-): Promise<AttemptResult> {
-  try {
-    const { notify_url, ...bizContent } = requestBody;
-    const response = await client.exec('alipay.trade.precreate', {
-      notify_url,
-      bizContent,
-    });
-    logger.log('支付宝 gateway.do 原始响应', response);
-
-    const fields = extractResponseFields(response);
-    if (fields.qrCode) {
-      if (!fields.tradeNo) {
-        logger.log('gateway.do 响应缺少 tradeNo，使用 out_trade_no 兜底', {
-          outTradeNo: requestBody.out_trade_no,
-        });
-      }
-      return {
-        success: true,
-        value: {
-          tradeNo: fields.tradeNo ?? requestBody.out_trade_no,
-          qrCode: fields.qrCode,
-          payload: response as Record<string, unknown>,
-        },
-      };
-    }
-
-    logger.log('gateway.do 响应缺少必要字段', fields);
-    return {
-      success: false,
-      meta: {
-        stage: 'v2',
-        errorCode: fields.errorCode,
-        errorMessage: fields.errorMessage,
-      },
-    };
-  } catch (error) {
-    logger.log('调用支付宝 gateway.do 接口失败', serializeError(error));
-    return { success: false, meta: collectErrorMeta(error, 'v2') };
+    logger.log('调用支付宝预创建接口失败', serializeError(error));
+    throw new GatewayError(
+      error instanceof Error ? error.message : 'Failed to create Alipay pre-order',
+      logger.toString(),
+    );
   }
 }
 
@@ -425,6 +431,6 @@ export function getNotifyVerifier() {
     };
   }
   return {
-    verify: (params: Record<string, string>) => client.checkNotifySignV2(params),
+    verify: (params: Record<string, string>) => client.verify(params),
   };
 }
