@@ -3,13 +3,10 @@ import { findPlan } from './plans';
 import type { OrderRecord } from './db';
 
 export class GatewayError extends Error {
-  constructor(message: string, options?: { debugLog?: string }) {
+  constructor(message: string) {
     super(message);
     this.name = 'GatewayError';
-    this.debugLog = options?.debugLog;
   }
-
-  readonly debugLog?: string;
 }
 
 const ALIPAY_ALGORITHM_MAPPING = {
@@ -242,14 +239,7 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
       payload: result.payload,
     } satisfies PreOrderResult;
   } catch (error) {
-    const message = error instanceof Error ? error.message : '创建支付宝订单失败';
-    const debugLog =
-      error instanceof Error
-        ? error.stack ?? error.message
-        : typeof error === 'string'
-          ? error
-          : JSON.stringify(error);
-    throw new GatewayError(message, { debugLog });
+    throw new GatewayError(error instanceof Error ? error.message : '创建支付宝订单失败');
   }
 }
 
