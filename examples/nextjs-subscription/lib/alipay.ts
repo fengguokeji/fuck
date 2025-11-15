@@ -304,11 +304,16 @@ async function attemptV3Precreate(
     logger.log('支付宝 V3 原始响应', response.data);
 
     const fields = extractResponseFields(response.data);
-    if (fields.tradeNo && fields.qrCode) {
+    if (fields.qrCode) {
+      if (!fields.tradeNo) {
+        logger.log('支付宝 V3 响应缺少 tradeNo，使用 out_trade_no 兜底', {
+          outTradeNo: requestBody.out_trade_no,
+        });
+      }
       return {
         success: true,
         value: {
-          tradeNo: fields.tradeNo,
+          tradeNo: fields.tradeNo ?? requestBody.out_trade_no,
           qrCode: fields.qrCode,
           payload: response.data as Record<string, unknown>,
         },
@@ -346,11 +351,16 @@ async function attemptV2Precreate(
     logger.log('支付宝 gateway.do 原始响应', response);
 
     const fields = extractResponseFields(response);
-    if (fields.tradeNo && fields.qrCode) {
+    if (fields.qrCode) {
+      if (!fields.tradeNo) {
+        logger.log('gateway.do 响应缺少 tradeNo，使用 out_trade_no 兜底', {
+          outTradeNo: requestBody.out_trade_no,
+        });
+      }
       return {
         success: true,
         value: {
-          tradeNo: fields.tradeNo,
+          tradeNo: fields.tradeNo ?? requestBody.out_trade_no,
           qrCode: fields.qrCode,
           payload: response as Record<string, unknown>,
         },
