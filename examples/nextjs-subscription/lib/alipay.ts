@@ -100,6 +100,14 @@ export function isMockMode() {
 
 type UnknownRecord = Record<string, unknown>;
 
+type PrecreateRequestBody = {
+  out_trade_no: string;
+  total_amount: string;
+  subject: string;
+  notify_url?: string;
+  product_code: string;
+};
+
 function collectObjectGraph(root: unknown): UnknownRecord[] {
   const seen = new Set<object>();
   const queue: unknown[] = [root];
@@ -136,6 +144,81 @@ function pickFirstString(records: UnknownRecord[], keys: string[]): string | und
     }
   }
   return undefined;
+}
+
+type AttemptStage = 'v3' | 'v2';
+
+type AttemptMeta = {
+  stage: AttemptStage;
+  httpStatus?: number;
+  traceId?: string;
+  errorCode?: string;
+  errorMessage?: string;
+};
+
+type AttemptSuccess = {
+  tradeNo: string;
+  qrCode: string;
+  payload: Record<string, unknown>;
+};
+
+type AttemptResult =
+  | { success: true; value: AttemptSuccess }
+  | { success: false; meta: AttemptMeta };
+
+function extractResponseFields(payload: unknown) {
+  const graph = collectObjectGraph(payload);
+  return {
+    tradeNo: pickFirstString(graph, ['tradeNo', 'trade_no']),
+    qrCode: pickFirstString(graph, ['qrCode', 'qr_code']),
+    errorCode: pickFirstString(graph, ['code', 'subCode', 'sub_code']),
+    errorMessage: pickFirstString(graph, ['message', 'msg', 'sub_msg']),
+  };
+}
+
+function describeFailure(meta?: AttemptMeta) {
+  if (!meta) {
+    return 'Failed to create Alipay pre-order';
+  }
+  const stageLabel = meta.stage === 'v3' ? 'V3 接口' : 'gateway.do 接口';
+  const details = [
+    stageLabel,
+    meta.httpStatus ? `HTTP ${meta.httpStatus}` : undefined,
+    meta.errorCode,
+    meta.errorMessage,
+    meta.traceId ? `traceId: ${meta.traceId}` : undefined,
+  ].filter(Boolean);
+  if (details.length === 0) {
+    return 'Failed to create Alipay pre-order';
+  }
+  return `Failed to create Alipay pre-order: ${details.join(' - ')}`;
+}
+
+function serializeError(error: unknown) {
+  if (error instanceof Error) {
+    return { message: error.message, stack: error.stack };
+  }
+  return error;
+}
+
+function collectErrorMeta(error: unknown, stage: AttemptStage): AttemptMeta {
+  const meta: AttemptMeta = { stage };
+  if (typeof error === 'object' && error !== null) {
+    const record = error as Record<string, unknown>;
+    if (typeof record.traceId === 'string') {
+      meta.traceId = record.traceId;
+    }
+    if (typeof record.responseHttpStatus === 'number') {
+      meta.httpStatus = record.responseHttpStatus;
+    }
+    if (typeof record.code === 'string') {
+      meta.errorCode = record.code;
+    }
+  }
+  if (error instanceof Error) {
+    meta.errorMessage = error.message;
+  }
+  return meta;
 }
 
 export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult> {
@@ -213,13 +296,12 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
     if (details.length > 0) {
       return `Failed to create Alipay pre-order: ${details.join(' - ')}`;
     }
-    return 'Failed to create Alipay pre-order';
-  })();
 
   if (!qrCode || !tradeNo) {
     logger.log('响应缺少必要字段', { tradeNo, qrCode, errorCode, errorMessage });
     throw new GatewayError(friendlyErrorMessage, logger.toString());
   }
+}
 
   logger.log('预订单创建成功', { tradeNo, qrCode });
 
