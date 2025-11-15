@@ -131,9 +131,9 @@ export default function OrdersPage() {
                   <div className="history-item-actions">{renderTutorialButton()}</div>
                   <div className="history-item-body">
                     <div className="history-qr-box">
-                      {item.qrImage ? (
+                      {qrImage ? (
                         <>
-                          <img src={item.qrImage} alt={`订单 ${item.id} 的二维码`} />
+                          <img src={qrImage} alt={`订单 ${item.id} 的二维码`} />
                           <span>扫码支付或重新获取链接</span>
                         </>
                       ) : (
