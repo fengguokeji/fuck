@@ -34,7 +34,7 @@ examples/nextjs-subscription
    # 或使用 npm install / yarn install
    ```
 
-2. 将 `.env.example` 复制为 `.env.local` 并按需填写变量。请务必配置 `ALIPAY_APP_ID`、`ALIPAY_PRIVATE_KEY` 以及支付宝公钥或证书路径，否则示例会直接拒绝创建订单；`ORDERS_FORCE_MEMORY=true` 仍可用于本地演示下单流程，但不会影响支付是否直连支付宝。
+2. 将 `.env.example` 复制为 `.env.local` 并按需填写变量。若省略支付宝密钥，站点会自动进入模拟模式，二维码仅用于演示；即使填写了密钥，也可以把 `ALIPAY_FORCE_MOCK` 设为 `true` 来强制使用模拟网关，防止本地误调真实账号。如果暂时没有数据库，也可设置 `ORDERS_FORCE_MEMORY=true`，让订单只存储在内存中。
 
 3. 启动开发服务器：
 
@@ -92,6 +92,7 @@ examples/nextjs-subscription
 ## 自定义套餐二维码与教程
 
 - 套餐的名称、价格、权益展示位于 [`lib/plans.ts`](./lib/plans.ts)，这些字段会在客户端渲染，可放心调整文案。
+- 若需要修改支付后交付的订阅链接或二维码内容，请编辑 [`lib/server/plan-secrets.ts`](./lib/server/plan-secrets.ts)。该文件仅在服务端加载，不会被打包到浏览器，能够避免敏感链接在网络抓包中直接暴露。
 - 教程跳转链接在套餐定义中的 `tutorialUrl` 字段，同样可根据产品上线后的使用说明进行替换。
 
 ## 实时订单查询接口
@@ -107,6 +108,7 @@ examples/nextjs-subscription
 | `ALIPAY_APP_ID` | 支付宝开放平台应用 App ID（生产或沙箱）。|
 | `ALIPAY_PRIVATE_KEY` | 应用私钥，需为 PKCS8 格式。|
 | `ALIPAY_ALIPAY_PUBLIC_KEY` | 支付宝公钥（或改用证书配置）。|
+| `ALIPAY_FORCE_MOCK` | 设为 `true` 时强制使用示例内置的模拟网关，即使同时提供了真实密钥，也不会向支付宝发起请求。|
 | `ORDERS_FORCE_MEMORY` | 设为 `true` 时跳过 Postgres，转而使用内存存储，适合本地演示或尚未准备数据库的场景。|
 | `ALIPAY_NOTIFY_URL` | 支付宝服务端通知回调地址；部署到 Vercel 后可留空，由应用自动推导。|
 | `ALIPAY_USE_SANDBOX` | `true` 时使用沙箱网关，适合调试。|
