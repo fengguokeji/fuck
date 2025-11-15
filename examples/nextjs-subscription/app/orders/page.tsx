@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { plans } from '../../lib/plans';
+import { buildQrImageUrl } from '../../lib/qr';
 
 type OrderHistoryItem = {
   id: string;
@@ -115,6 +116,7 @@ export default function OrdersPage() {
                   查看使用教程
                 </a>
               );
+              const qrImage = item.qrImage ?? (item.qrCode ? buildQrImageUrl(item.qrCode) : undefined);
               return (
                 <div key={item.id} className="history-item">
                   <div className="history-item-header">

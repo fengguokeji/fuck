@@ -245,6 +245,18 @@ function collectErrorMeta(error: unknown, stage: AttemptStage): AttemptMeta {
   return meta;
 }
 
+function buildMockPreOrder(order: OrderRecord): PreOrderResult {
+  const qrContent = `MOCK_PAYMENT://${order.id}`;
+  return {
+    tradeNo: `MOCK-${randomUUID()}`,
+    qrCode: qrContent,
+    gateway: 'mock',
+    payload: {
+      qrContent,
+    },
+  };
+}
+
 export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult> {
   const missingKeyParts = collectMissingKeyParts();
   if (missingKeyParts.length > 0) {
