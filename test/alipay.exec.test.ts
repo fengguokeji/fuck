@@ -11,6 +11,7 @@ import {
 import {
   AlipayFormData, AlipaySdk, AlipaySdkConfig,
 } from '../src/index.js';
+import { mockSandboxGateway, mockStableGateway } from './mockGateway.js';
 
 const privateKey = readFixturesFile('app-private-key.pem', 'ascii');
 const alipayPublicKey = readFixturesFile('alipay-public-key.pem', 'ascii');
@@ -64,6 +65,17 @@ describe('test/alipay.exec.test.ts', () => {
 
   describe('exec()', () => {
     it('验证调用成功', async () => {
+      mockStableGateway(mockAgent, {
+        body: {
+          alipay_security_risk_content_analyze_response: {
+            code: '10000',
+            msg: 'Success',
+            need_query: 'no_need',
+            result_action: 'PASSED',
+          },
+          sign: 'mock-sign',
+        },
+      });
       const result = await sdkStable.exec('alipay.security.risk.content.analyze', {
         bizContent: {
           account_type: 'MOBILE_NO',
@@ -80,6 +92,15 @@ describe('test/alipay.exec.test.ts', () => {
     });
 
     it('test alipay.system.oauth.token', async () => {
+      mockStableGateway(mockAgent, {
+        body: {
+          alipay_system_oauth_token_response: {
+            code: '40002',
+            msg: 'Invalid Arguments',
+          },
+          sign: 'mock-sign',
+        },
+      });
       const result = await sdkStable.exec('alipay.system.oauth.token', {
         code: 'abcd', grant_type: 'authorization_code',
       });
@@ -125,6 +146,17 @@ describe('test/alipay.exec.test.ts', () => {
     });
 
     it('needEncrypt = true 但是服务端解密失败', async () => {
+      mockStableGateway(mockAgent, {
+        body: {
+          alipay_security_risk_content_analyze_response: {
+            code: '40003',
+            msg: 'Insufficient Conditions',
+            sub_code: 'isv.decryption-error-unknown',
+            sub_msg: '解密出错, 未知错误',
+          },
+          sign: 'mock-sign',
+        },
+      });
       // {"alipay_security_risk_content_analyze_response":{"code":"40003","msg":"Insufficient Conditions","sub_code":"isv.decryption-error-unknown","sub_msg":"解密出错, 未知错误"},"sign":"fpPCfGS+MLqJzK0Q/W61pNMXMLBogtCxyl0ZiEtOzTKWZBC7hiXe9AGOML0hoXQkJshlRgz8dUPvQNapuZff5TNu16/Va/4bnwLW1V1Og7KaAYlD9jbQPFLJv+YFM3SAXmylLVMatKMbEy2Cb3vn6FVpDrqTspUjhcPH7ACUirIcriFR+FhT9yGypLeOm2wYto0t59H5k5FlcsepdUReBcXP0UbglwjUOHh9TX3/VNQk3s6zoxhUC4ep570gmycEHwg4H1lSJky8M/FADUBr3gd8rynz3S+CbfPaOJoGKraeSzR2iA1bIu1fUN7GjI1wZjR8PfiQI2joNn+Z9OxUgw=="}
       const result = await sdkStable.exec('alipay.security.risk.content.analyze', {
         bizContent: {
@@ -515,6 +547,19 @@ describe('test/alipay.exec.test.ts', () => {
       form.addField('biz_code', 'openpt_appstore');
       form.addFile('file_content', '图片.jpg', filePath);
 
+      mockSandboxGateway(mockAgent, {
+        traceId: 'traceid1234567890123456789012345',
+        body: {
+          alipay_open_file_upload_response: {
+            code: '10000',
+            msg: 'Success',
+            file_id: 'mock-file-id',
+          },
+          sign: 'mock-sign',
+        },
+      });
+      mm.data(Verify.prototype, 'verify', true);
+
       const result = await sdk.exec('alipay.open.file.upload', {}, {
         formData: form,
         validateSign: true,
@@ -532,6 +577,19 @@ describe('test/alipay.exec.test.ts', () => {
       form.addField('biz_code', 'openpt_appstore');
       form.addFile('file_content', '图片.jpg', fs.createReadStream(filePath));
 
+      mockSandboxGateway(mockAgent, {
+        traceId: 'traceid1234567890123456789012346',
+        body: {
+          alipay_open_file_upload_response: {
+            code: '10000',
+            msg: 'Success',
+            file_id: 'mock-file-id',
+          },
+          sign: 'mock-sign',
+        },
+      });
+      mm.data(Verify.prototype, 'verify', true);
+
       const result = await sdk.exec('alipay.open.file.upload', {}, {
         formData: form,
         validateSign: true,
@@ -548,6 +606,19 @@ describe('test/alipay.exec.test.ts', () => {
       const form = new AlipayFormData();
       form.addField('biz_code', 'openpt_appstore');
       form.addFile('file_content', '图片.jpg', fs.readFileSync(filePath));
+
+      mockSandboxGateway(mockAgent, {
+        traceId: 'traceid1234567890123456789012347',
+        body: {
+          alipay_open_file_upload_response: {
+            code: '10000',
+            msg: 'Success',
+            file_id: 'mock-file-id',
+          },
+          sign: 'mock-sign',
+        },
+      });
+      mm.data(Verify.prototype, 'verify', true);
 
       const result = await sdk.exec('alipay.open.file.upload', {}, {
         formData: form,
@@ -704,14 +775,25 @@ describe('test/alipay.exec.test.ts', () => {
 
     // 沙箱网关环境可能不稳定，仅当成功返回时校验。
     it('execute with validateSign is true', async () => {
+      mockSandboxGateway(mockAgent, {
+        body: {
+          alipay_offline_market_shop_category_query_response: {
+            code: '10000',
+            msg: 'Success',
+            shop_category_config_infos: [
+              { category_name: 'mock' },
+            ],
+          },
+          sign: 'mock-sign',
+        },
+      });
+
       const result = await sdk.exec('alipay.offline.market.shop.category.query', {
         bizContent: {},
       });
-      console.log(result);
-      if (result.code === '10000') {
-        assert(result.shopCategoryConfigInfos);
-        assert(result.shopCategoryConfigInfos[0]);
-      }
+      assert.equal(result.code, '10000');
+      assert(result.shopCategoryConfigInfos);
+      assert(result.shopCategoryConfigInfos[0]);
     });
   });
 });
