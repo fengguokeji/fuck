@@ -74,9 +74,10 @@ examples/nextjs-subscription
    - 在 [支付宝开放平台](https://open.alipay.com/) 创建应用并获取以下信息：
      - `ALIPAY_APP_ID`
      - `ALIPAY_PRIVATE_KEY`
-     - `ALIPAY_ALIPAY_PUBLIC_KEY`（或证书路径：`ALIPAY_APP_CERT_PATH`、`ALIPAY_ALIPAY_PUBLIC_CERT_PATH`、`ALIPAY_ALIPAY_ROOT_CERT_PATH`）
+     - `ALIPAY_ALIPAY_PUBLIC_KEY`（或一次性提供证书：`ALIPAY_APP_CERT_PATH`、`ALIPAY_ALIPAY_PUBLIC_CERT_PATH`、`ALIPAY_ALIPAY_ROOT_CERT_PATH`）
    - 将异步通知地址设置为 `https://<你的 Vercel 域名>/api/alipay/notify`。
    - 若希望使用沙箱，可将 `ALIPAY_USE_SANDBOX` 设为 `true` 并配置沙箱密钥。
+   - 本示例直接使用官方的 [`alipay-sdk`](https://github.com/alipay/alipay-sdk-nodejs-all)，上述密钥或证书变量均可填写 PEM 内容或文件路径；当同时提供三份证书时会自动切换到证书模式。
 
 5. **设置站点展示信息（可选）**
    - 根据需求设置 `NEXT_PUBLIC_SITE_NAME` 与 `NEXT_PUBLIC_SUPPORT_EMAIL` 等变量，控制页面上显示的站点名称与支持邮箱。
@@ -109,8 +110,11 @@ examples/nextjs-subscription
 | 变量 | 说明 |
 | --- | --- |
 | `ALIPAY_APP_ID` | 支付宝开放平台应用 App ID（生产或沙箱）。|
-| `ALIPAY_PRIVATE_KEY` | 应用私钥，需为 PKCS8 格式。|
-| `ALIPAY_ALIPAY_PUBLIC_KEY` | 支付宝公钥（或改用证书配置）。|
+| `ALIPAY_PRIVATE_KEY` | 应用私钥，需为 PKCS8 格式，可直接填写 PEM 内容或指向 PEM 文件的路径。|
+| `ALIPAY_ALIPAY_PUBLIC_KEY` | 支付宝公钥（或改用证书配置），同样支持填写 PEM 内容或路径。|
+| `ALIPAY_APP_CERT_PATH` | 应用公钥证书内容或路径。若与以下两项同时提供，则自动切换到证书模式。|
+| `ALIPAY_ALIPAY_PUBLIC_CERT_PATH` | 支付宝公钥证书内容或路径；在证书模式下必填，也可在公钥模式下用来自动提取支付宝公钥。|
+| `ALIPAY_ALIPAY_ROOT_CERT_PATH` | 支付宝根证书内容或路径，证书模式必填。|
 | `ALIPAY_FORCE_MOCK` | 设为 `true` 时强制使用示例内置的模拟网关，即使同时提供了真实密钥，也不会向支付宝发起请求。|
 | `ORDERS_FORCE_MEMORY` | 设为 `true` 时跳过 Postgres，转而使用内存存储，适合本地演示或尚未准备数据库的场景。|
 | `ALIPAY_NOTIFY_URL` | 支付宝服务端通知回调地址；部署到 Vercel 后可留空，由应用自动推导。|
