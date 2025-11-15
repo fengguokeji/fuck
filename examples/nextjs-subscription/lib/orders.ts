@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { findPlan } from './plans';
+import { getPlanQrPayload } from './server/plan-secrets';
 import type { OrderRecord, OrderStatus } from './db';
 import { saveOrder, updateOrder, findOrdersByEmail, findOrderById } from './db';
 import { createPreOrder, isMockMode } from './alipay';
@@ -46,6 +47,10 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   order.tradeNo = preOrder.tradeNo;
   order.qrCode = resolvedQrContent;
   order.gatewayPayload = preOrder.payload;
+
+  if (isMockMode()) {
+    order.status = 'paid';
+  }
 
   await saveOrder(order);
 

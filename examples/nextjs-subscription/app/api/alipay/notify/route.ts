@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getNotifyVerifier } from '../../../../lib/alipay';
+import { getNotifyVerifier, isMockMode } from '../../../../lib/alipay';
 import { markOrderStatus, getOrder } from '../../../../lib/orders';
 
 export const runtime = 'nodejs';
@@ -17,17 +17,10 @@ export async function POST(request: Request) {
   const body = await request.text();
   const payload = parseForm(body);
 
-  let verifier: ReturnType<typeof getNotifyVerifier>;
-  try {
-    verifier = getNotifyVerifier();
-  } catch (error) {
-    console.error('[alipay:notify:init]', error);
-    return NextResponse.json({ error: '支付宝配置缺失，无法验签' }, { status: 500 });
-  }
-
+  const verifier = getNotifyVerifier();
   const verified = verifier.verify(payload);
 
-  if (!verified) {
+  if (!verified && !isMockMode()) {
     return NextResponse.json({ error: 'invalid signature' }, { status: 400 });
   }
 
@@ -43,7 +36,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'order not found' }, { status: 404 });
   }
 
-  if (tradeStatus === 'TRADE_SUCCESS' || tradeStatus === 'TRADE_FINISHED') {
+  if (tradeStatus === 'TRADE_SUCCESS' || tradeStatus === 'TRADE_FINISHED' || isMockMode()) {
     await markOrderStatus(order.id, 'paid', {
       gatewayPayload: payload,
       tradeNo: payload.trade_no ?? order.tradeNo,
