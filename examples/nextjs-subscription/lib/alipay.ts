@@ -85,14 +85,23 @@ export async function createPreOrder(order: OrderRecord): Promise<PreOrderResult
     },
   });
 
-  const data = response.data as { trade_no?: string; qr_code?: string };
-  if (!data?.qr_code || !data?.trade_no) {
+  const data = response.data as {
+    tradeNo?: string;
+    trade_no?: string;
+    qrCode?: string;
+    qr_code?: string;
+  };
+
+  const tradeNo = data?.tradeNo ?? data?.trade_no;
+  const qrCode = data?.qrCode ?? data?.qr_code;
+
+  if (!qrCode || !tradeNo) {
     throw new Error('Failed to create Alipay pre-order');
   }
 
   return {
-    tradeNo: data.trade_no,
-    qrCode: data.qr_code,
+    tradeNo,
+    qrCode,
     gateway: 'alipay',
     payload: data as unknown as Record<string, unknown>,
   };
